@@ -24,8 +24,8 @@ jobs:
       - name: 设置 Android SDK
         uses: android-actions/setup-android@v3
         with:
-          sdk-version: 34
-          build-tools-version: 34.0.0
+          accept-android-sdk-licenses: true
+          packages: platform-tools,platforms;android-34,build-tools;34.0.0
 
       - name: 授权 gradlew 执行权限
         run: chmod +x gradlew
