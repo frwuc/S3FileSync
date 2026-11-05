@@ -16,6 +16,7 @@
 - SDK 版本：`compileSdk 34`、`minSdk 21`、`targetSdk 29`
 - JDK：需要 **JDK 17**（AGP 8.1.x 要求）
 - 依赖：`androidx.*` + `com.qiniu:qiniu-android-sdk:8.11.0`（最初误写为不存在的 `7.16.0`，中间曾尝试 `7.6.7`）
+- 七牛上传凭证：Android SDK 无 Auth 类，由 `QiniuToken.java` 按官方算法本地签发
 - 关键文件：
   - `.github/workflows/android-build.yml`（CI 工作流）
   - `gradlew` / `gradlew.bat`（Gradle 启动脚本）
@@ -342,13 +343,22 @@ error: cannot find symbol
 error: isValidTime() has private access in UploadScheduler
 ```
 
-**根因 1：七牛 SDK 大版本与源码不匹配。**
-项目源码调用了 `Auth.create(...)`、`Zone.autoZone()` 等七牛 8.x API。
-中间为解决依赖下载问题而使用的 `7.6.7` 虽然能下载，但 API 不兼容，
-所以出现 `cannot find symbol`。
+**根因 1：七牛 SDK 与源码 API 不匹配（两条）。**
+项目源码调用了 `Auth.create(...)`、`Zone.autoZone()`。
+当时升级到 8.11.0 只解决了依赖下载和 `Zone` 类的 import 问题
+（`com.qiniu.android.common.Zone` 确实存在），但后经核对官方源码仓库
+（qiniu/android-sdk，v7.6.7 与 v8.11.0 的完整源码树）发现：
 
-**解决办法：**
-将依赖升级为 `com.qiniu:qiniu-android-sdk:8.11.0`，与源码使用的 API 对齐。
+- `com.qiniu.android.auth.Auth` 在 Android SDK 的**任何版本都不存在**
+  （官方口径：上传凭证应由服务端签发，Android SDK 从不内置 Auth）。
+- `Zone.autoZone()` 静态方法也不存在；`Zone` 是抽象类，
+  `Configuration.Builder` 的 zone 缺省值就是 `AutoZone`（自动区域）。
+
+这两个写法疑似参照了 Java SDK（`com.qiniu.util.Auth`）的用法，
+属于「把 Java SDK 的 API 当成 Android SDK 用」。完整修复见报错 12。
+
+**当时采取的措施：**
+将依赖升级为 `com.qiniu:qiniu-android-sdk:8.11.0`（与存在的 API 对齐）。
 
 **根因 2：Java 方法可见性不足。**
 `MainActivity` 调用了 `UploadScheduler.isValidTime(time)`，但该方法原来声明为：
@@ -437,6 +447,72 @@ android {
 
 ---
 
+## 报错 12：cannot find symbol: Auth / Zone.autoZone()（Android SDK 无此类和此方法）
+
+**报错原文（关键行）：**
+```
+> Task :app:compileDebugJavaWithJavac FAILED
+error: cannot find symbol
+  symbol:   class Auth
+  location: package com.qiniu.android
+error: cannot find symbol
+  symbol:   method autoZone()
+  location: class com.qiniu.android.common.Zone
+```
+
+**根因（已核对官方源码确认）：**
+`com.qiniu:qiniu-android-sdk` 的 7.x、8.x **所有版本都没有 `Auth` 类**，
+也没有 `Zone.autoZone()` 静态方法。核对方法：
+下载 AAR（`https://repo.maven.apache.org/maven2/com/qiniu/qiniu-android-sdk/8.11.0/qiniu-android-sdk-8.11.0.aar`）
+解包 `classes.jar` 列出全部类；或查 GitHub 仓库
+`https://github.com/qiniu/android-sdk` 对应 tag 的源码树
+（v8.11.0 只有 bigdata/collect/common/http/storage/transaction/utils 包，无 auth 包）。
+
+源码里的 `Auth.create(ak, sk).uploadToken(bucket, key, 3600)` 写法来自
+**Java SDK**（`com.qiniu:qiniu-java-sdk` 的 `com.qiniu.util.Auth`），
+不能直接用在 Android SDK 上。官方建议上传凭证由服务端签发；
+本项目是个人工具、AK/SK 存在客户端，因此选择本地自签。
+
+**解决办法：**
+1. **删除两处不存在的 API 调用**：
+   - `import com.qiniu.android.auth.Auth;` → 删除
+   - `.zone(Zone.autoZone())` → 删除（`Configuration.Builder` 的 zone 缺省值
+     就是 `AutoZone`，等价于"自动区域"）
+2. **新增 `QiniuToken.java` 本地签发上传凭证**，按官方算法实现
+   （https://developer.qiniu.com/kodo/1208/upload-token ）：
+
+```java
+policy         = {"scope":"bucket:key","deadline":秒级时间戳}
+encodedPolicy  = urlSafeBase64(policy JSON 的 UTF-8 字节)
+sign           = HmacSHA1(secretKey, encodedPolicy 字符串字节)   // 注意：签的是编码后的字符串
+token          = AK + ":" + urlSafeBase64(sign) + ":" + encodedPolicy
+```
+
+调用处替换：
+```java
+// 旧（Auth 不存在）：
+String token = Auth.create(accessKey, secretKey).uploadToken(bucket, key, 3600);
+// 新（本地签发）：
+String token = QiniuToken.uploadToken(accessKey, secretKey, bucket, key, 3600);
+```
+
+**实现要点（都是踩过的坑）：**
+- Base64 必须用 `android.util.Base64` + `Base64.URL_SAFE | Base64.NO_WRAP`：
+  `java.util.Base64` 需要 API 26+，本项目 minSdk 21 会挂；
+  `NO_WRAP` 防止插入换行符破坏 token。
+- HMAC 的输入是 **encodedPolicy 字符串的字节**，不是原始 policy JSON 字节
+  （与 Java SDK `Auth.signWithData` 的行为一致，签错会被服务端报 401/invalid token）。
+- URL 安全 Base64 只替换 `+ → -`、`/ → _`，**保留 `=` 填充**（七牛 UrlSafeBase64 的约定）。
+- scope 规则：key 非空 → `"bucket:key"`（指定 key 上传）；key 空 → `"bucket"`。
+
+**排查方法论（如何在没有日志时预先验证依赖兼容性）：**
+CI 日志拿不到时，可以直接从 Maven Central 下载目标版本 AAR，
+解包 `classes.jar` 列出类名清单，对照源码 import 逐个核对；
+再从 GitHub 仓库拉对应 tag 的源码看方法签名。这一步在本地 5 分钟就能做完，
+比等 CI 跑一轮快得多。
+
+---
+
 ## 附带：补充 .gitignore
 
 原仓库没有 `.gitignore`，需补标准 Android 忽略项，避免本机构建缓存被误提交：
@@ -518,7 +594,7 @@ jobs:
    - `android.useAndroidX not enabled` / `checkDebugAarMetadata` → gradle.properties 配置缺失（报错 7）
    - `Could not find` / `Could not resolve` → 依赖版本、仓库或网络问题（报错 8）
    - `processDebugResources` / `failed linking references` → 资源引用或资源文件缺失（报错 9）
-   - `compileDebugJavaWithJavac` / `cannot find symbol` / `has private access` → 依赖 API 或 Java 源码问题（报错 10）
+   - `compileDebugJavaWithJavac` / `cannot find symbol` / `has private access` → 依赖 API 或 Java 源码问题（报错 10、12：特别注意七牛 Android SDK 无 Auth 类，token 需本地自签或服务端签发）
    - `processDebugMainManifest` / `Manifest merger failed` → 主应用与依赖库的 Manifest 属性冲突（报错 11）
 
 2. **确认版本匹配**：
