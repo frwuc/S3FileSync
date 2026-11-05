@@ -20,75 +20,86 @@
 ##
 ##############################################################################
 
-# Attempt to set APP_HOME
-# Resolve links: $0 may be a link
-PRG="$0"
-while [ -h "$PRG" ]; do
-    ls=$(ls -ld "$PRG")
-    link=$(expr "$ls" : '.*-> \(.*\)$')
-    if expr "$link" : '/.*' > /dev/null; then
-        PRG="$link"
-    else
-        PRG=$(dirname "$PRG")"/$link"
-    fi
-done
-SAVED="$(pwd)"
-cd "$(dirname "$PRG")/" >/dev/null 2>&1 || exit 1
-APP_HOME="$(pwd -P)"
-cd "$SAVED" >/dev/null 2>&1 || exit 1
-
+APP_HOME=$(cd "$(dirname "$0")" && pwd)
 APP_NAME="Gradle"
-APP_BASE_NAME=$(basename "$0")
+APP_BASE_NAME=${0##*/}
 
 DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 
-MAX_FD="maximum"
+# Use the maximum available, or set MAX_FD != -1 to use that value.
+MAX_FD=maximum
 
-warn() {
+warn () {
     echo "$*"
 }
 
-die() {
+die () {
     echo
     echo "$*"
     echo
     exit 1
 }
 
+# OS specific support (must be 'true' or 'false').
 cygwin=false
 msys=false
 darwin=false
 stoponn=false
-case "$(uname)" in
-    CYGWIN* ) cygwin=true ;;
-    Darwin* ) darwin=true ;;
-    MINGW* ) msys=true ;;
-    STOP_ON_CONTROL_C ) stoponn=true ;;
+case "`uname`" in
+  CYGWIN* )
+    cygwin=true
+    ;;
+  Darwin* )
+    darwin=true
+    ;;
+  MINGW* )
+    msys=true
+    ;;
+  STOP_ON_CONTROL_C )
+    stoponn=true
+    ;;
 esac
+
+# Attempt to set APP_HOME
+# Resolve links: $0 may be a link
+PRG=$0
+while [ -h "$PRG" ] ; do
+    ls=`ls -ld "$PRG"`
+    link=`expr "$ls" : '.*-> \(.*\)$'`
+    if expr "$link" : '/.*' > /dev/null; then
+        PRG="$link"
+    else
+        PRG=`dirname "$PRG"`"/$link"
+    fi
+done
+SAVED="`pwd`"
+cd "`dirname \"$PRG\"`/" >/dev/null 2>&1 || exit 1
+APP_HOME="`pwd -P`"
+cd "$SAVED" >/dev/null 2>&1 || exit 1
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
-if [ -n "$JAVA_HOME" ]; then
-    if [ -x "$JAVA_HOME/jre/sh/java" ]; then
+if [ -n "$JAVA_HOME" ] ; then
+    if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
         JAVACMD="$JAVA_HOME/jre/sh/java"
     else
         JAVACMD="$JAVA_HOME/bin/java"
     fi
-    if [ ! -x "$JAVACMD" ]; then
+    if [ ! -x "$JAVACMD" ] ; then
         die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME"
     fi
 else
-    JAVACMD="java"
+    JAVACMD=java
     which java >/dev/null 2>&1 || die "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH."
 fi
 
-if [ "$cygwin" = "false" -a "$darwin" = "false" -a "$stoponn" = "false" ]; then
-    MAX_FD_LIMIT=$(ulimit -H -n)
-    if [ $? -eq 0 ]; then
-        if [ "$MAX_FD" = "maximum" -o "$MAX_FD" = "max" ]; then
-            MAX_FD="$MAX_FD_LIMIT"
+if [ "$cygwin" = "false" -a "$darwin" = "false" -a "$stoponn" = "false" ] ; then
+    MAX_FD_LIMIT=`ulimit -H -n`
+    if [ $? -eq 0 ] ; then
+        if [ "$MAX_FD" = maximum -o "$MAX_FD" = max ] ; then
+            MAX_FD=$MAX_FD_LIMIT
         fi
-        ulimit -n $MAX_FD 2>/dev/null ||
+        ulimit -n $MAX_FD 2>/dev/null || \
             warn "Could not set maximum file descriptor limit: $MAX_FD"
     fi
 else
@@ -99,12 +110,12 @@ if $darwin; then
     GRADLE_OPTS="$GRADLE_OPTS \"-Xdock:name=$APP_NAME\" \"-Xdock:icon=$APP_HOME/media/gradle.icns\""
 fi
 
-if $cygwin; then
-    APP_HOME=$(cygpath --path --mixed "$APP_HOME")
-    CLASSPATH=$(cygpath --path --mixed "$CLASSPATH")
-    JAVACMD=$(cygpath --unix "$JAVACMD")
+if $cygwin ; then
+    APP_HOME=`cygpath --path --mixed "$APP_HOME"`
+    CLASSPATH=`cygpath --path --mixed "$CLASSPATH"`
+    JAVACMD=`cygpath --unix "$JAVACMD"`
 fi
 
-eval set -- $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS '"$@"'
+eval "set -- $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS \"\$@\""
 
-exec "$JAVACMD" "$@" -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
+exec "$JAVACMD" -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
