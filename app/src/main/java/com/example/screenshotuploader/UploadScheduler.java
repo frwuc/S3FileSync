@@ -63,7 +63,7 @@ public class UploadScheduler {
         schedule(context, times);
     }
 
-    private static boolean isValidTime(String time) {
+    public static boolean isValidTime(String time) {
         if (time == null || time.length() != 5) return false;
         if (time.charAt(2) != ':') return false;
         try {
