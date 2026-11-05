@@ -15,7 +15,7 @@
 - Android Gradle Plugin (AGP)：`8.1.1`（根 `build.gradle` 的 `classpath`）
 - SDK 版本：`compileSdk 34`、`minSdk 21`、`targetSdk 29`
 - JDK：需要 **JDK 17**（AGP 8.1.x 要求）
-- 依赖：`androidx.*` + `com.qiniu:qiniu-android-sdk:7.16.0`
+- 依赖：`androidx.*` + `com.qiniu:qiniu-android-sdk:8.11.0`（最初误写为不存在的 `7.16.0`，中间曾尝试 `7.6.7`）
 - 关键文件：
   - `.github/workflows/android-build.yml`（CI 工作流）
   - `gradlew` / `gradlew.bat`（Gradle 启动脚本）
@@ -254,6 +254,189 @@ android.enableJetifier=true
 
 ---
 
+## 报错 8：Could not find com.qiniu:qiniu-android-sdk:7.16.0
+
+**报错原文（关键行）：**
+```
+> Could not find com.qiniu:qiniu-android-sdk:7.16.0.
+  Searched in the following locations:
+    https://dl.google.com/dl/android/maven2/com/qiniu/qiniu-android-sdk/7.16.0/...
+    https://repo.maven.apache.org/maven2/com/qiniu/qiniu-android-sdk/7.16.0/...
+```
+
+**根因：**
+`app/build.gradle` 中声明的七牛 Android SDK 版本 `7.16.0` 不存在。
+这不是 Gradle 缓存或 CI 网络问题，单纯重跑工作流无法解决。
+
+**处理过程：**
+1. 先将版本改成可下载的 `7.6.7`，依赖解析错误消失。
+2. 随后 Java 编译报 `Auth`、`Zone.autoZone()` 不存在，说明项目源码使用的是七牛 8.x API，不能停在 `7.6.7`。
+3. 最终改为源码所需的版本：
+
+```gradle
+dependencies {
+    implementation 'com.qiniu:qiniu-android-sdk:8.11.0'
+}
+```
+
+**要点：**
+“版本能下载”只代表依赖解析成功，不代表与源码 API 兼容。
+遇到这种连续报错，要同时核对「Maven 上版本是否存在」和「源码针对哪个大版本编写」。
+
+---
+
+## 报错 9：processDebugResources 资源链接失败，launcher 图标缺失
+
+**报错原文（关键行）：**
+```
+> Task :app:processDebugResources FAILED
+error: resource mipmap/ic_launcher
+  (aka com.example.screenshotuploader:mipmap/ic_launcher) not found.
+error: resource mipmap/ic_launcher_round
+  (aka com.example.screenshotuploader:mipmap/ic_launcher_round) not found.
+error: failed linking references.
+```
+
+**根因：**
+`AndroidManifest.xml` 引用了两个资源：
+```xml
+android:icon="@mipmap/ic_launcher"
+android:roundIcon="@mipmap/ic_launcher_round"
+```
+但仓库的 `mipmap-*` 目录里没有对应文件。AAPT2 在链接资源时找不到引用目标，
+因此尚未进入 Java 编译阶段就失败。
+
+**解决办法：**
+为五种密度分别补齐 `ic_launcher.png` 和 `ic_launcher_round.png`，共 10 个文件：
+
+```text
+app/src/main/res/
+├── mipmap-mdpi/       # 48 × 48
+├── mipmap-hdpi/       # 72 × 72
+├── mipmap-xhdpi/      # 96 × 96
+├── mipmap-xxhdpi/     # 144 × 144
+└── mipmap-xxxhdpi/    # 192 × 192
+```
+
+本次已生成并提交蓝紫底、白色上传箭头的普通及圆形图标。
+如果项目已有图标，也可以删除 Manifest 中的 `android:roundIcon`，
+或把两个引用都改到真实存在的资源，但不能保留悬空引用。
+
+**排查要点：**
+- `@mipmap/...` 必须在 `res/mipmap-*` 下有同名资源。
+- `@drawable/...`、`@string/...` 等同理；资源扩展名不参与引用名。
+- 资源缺失看 `processDebugResources` / AAPT2，不要误当成 Java 源码问题。
+
+---
+
+## 报错 10：compileDebugJavaWithJavac 源码编译失败
+
+**报错原文（关键行）：**
+```
+> Task :app:compileDebugJavaWithJavac FAILED
+error: cannot find symbol
+  symbol: class Auth
+error: cannot find symbol
+  symbol:   method autoZone()
+  location: class Zone
+error: isValidTime() has private access in UploadScheduler
+```
+
+**根因 1：七牛 SDK 大版本与源码不匹配。**
+项目源码调用了 `Auth.create(...)`、`Zone.autoZone()` 等七牛 8.x API。
+中间为解决依赖下载问题而使用的 `7.6.7` 虽然能下载，但 API 不兼容，
+所以出现 `cannot find symbol`。
+
+**解决办法：**
+将依赖升级为 `com.qiniu:qiniu-android-sdk:8.11.0`，与源码使用的 API 对齐。
+
+**根因 2：Java 方法可见性不足。**
+`MainActivity` 调用了 `UploadScheduler.isValidTime(time)`，但该方法原来声明为：
+```java
+private static boolean isValidTime(String time)
+```
+`private` 只允许在 `UploadScheduler` 类内部调用，其他类无法访问。
+
+**解决办法：**
+把需要跨类调用的静态工具方法改为 `public`：
+```java
+public static boolean isValidTime(String time) {
+    // 校验 HH:mm
+}
+```
+
+**要点：**
+- `cannot find symbol` 优先检查 import、依赖版本、类名/方法名及源码是否使用对应大版本 API。
+- `has private access` 是访问修饰符问题，与依赖下载无关。
+- 不要为了消除依赖解析错误而随意降级 SDK，应以源码实际 API 为准。
+
+---
+
+## 报错 11：Manifest merger failed，application android:label 冲突
+
+**报错原文（关键行）：**
+```
+> Task :app:processDebugMainManifest FAILED
+Manifest merger failed : Attribute application@label value=(截图定时上传)
+  from AndroidManifest.xml:17:9-31
+is also present at [com.qiniu:qiniu-android-sdk:8.11.0]
+  AndroidManifest.xml:17:9-41 value=(@string/app_name).
+Suggestion: add 'tools:replace="android:label"' to <application> element
+  to override.
+```
+
+同时出现的警告：
+```
+Setting the namespace via the package attribute in the source AndroidManifest.xml
+is no longer supported, and the value is ignored.
+Recommendation: remove package="com.example.screenshotuploader" ...
+```
+
+**根因：**
+主应用和七牛 SDK 的 AAR 都包含 `<application android:label="...">`，但值不同：
+主应用是「截图定时上传」，SDK 使用它自己的 `@string/app_name`。
+Manifest merger 无法自行判断最终应用名称，因此要求主应用明确指定覆盖规则。
+
+`package` 警告则是另一件事：项目已在 `app/build.gradle` 中配置
+`namespace 'com.example.screenshotuploader'`，AGP 8.x 不再从 Manifest 的 `package` 设置 namespace。
+
+**解决办法：**
+1. 在根 `<manifest>` 增加 `xmlns:tools`，并删除旧式 `package` 属性。
+2. 在主应用的 `<application>` 上增加 `tools:replace="android:label"`。
+
+修复后的关键结构：
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:label="截图定时上传"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        tools:replace="android:label">
+        <!-- activity、receiver、service -->
+    </application>
+</manifest>
+```
+
+`app/build.gradle` 保留：
+```gradle
+android {
+    namespace 'com.example.screenshotuploader'
+    defaultConfig {
+        applicationId "com.example.screenshotuploader"
+    }
+}
+```
+
+**要点：**
+- `tools:replace` 是构建期合并指令，表示冲突时以主应用的 `android:label` 为准。
+- `tools` 命名空间只影响构建，不会作为应用功能打包进 APK。
+- 不要随意把一长串属性加入 `tools:replace`；只覆盖日志明确指出的冲突项。
+- 删除 Manifest 的 `package` 不会改变应用 ID，`namespace` 和 `applicationId` 仍在 Gradle 中配置。
+
+---
+
 ## 附带：补充 .gitignore
 
 原仓库没有 `.gitignore`，需补标准 Android 忽略项，避免本机构建缓存被误提交：
@@ -333,8 +516,10 @@ jobs:
    - `GradleWrapperMain` / `NoClassDefFoundError` / `ClassNotFoundException` → wrapper jar 缺失或不完整（报错 3、4、5）
    - `Unknown command-line option` / 参数解析 → gradlew 脚本版本问题（报错 6）
    - `android.useAndroidX not enabled` / `checkDebugAarMetadata` → gradle.properties 配置缺失（报错 7）
-   - `Could not resolve` / 依赖下载失败 → 依赖仓库/网络问题
-   - `compileDebugJava` / 编译错误 → 源码问题
+   - `Could not find` / `Could not resolve` → 依赖版本、仓库或网络问题（报错 8）
+   - `processDebugResources` / `failed linking references` → 资源引用或资源文件缺失（报错 9）
+   - `compileDebugJavaWithJavac` / `cannot find symbol` / `has private access` → 依赖 API 或 Java 源码问题（报错 10）
+   - `processDebugMainManifest` / `Manifest merger failed` → 主应用与依赖库的 Manifest 属性冲突（报错 11）
 
 2. **确认版本匹配**：
    - AGP 版本 ↔ Gradle 版本 ↔ JDK 版本（三者强相关）
