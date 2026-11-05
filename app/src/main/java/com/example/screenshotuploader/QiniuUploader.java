@@ -3,12 +3,10 @@ package com.example.screenshotuploader;
 import android.content.Context;
 import android.util.Log;
 
-import com.qiniu.android.auth.Auth;
 import com.qiniu.android.http.ResponseInfo;
 import com.qiniu.android.storage.Configuration;
 import com.qiniu.android.storage.UpCompletionHandler;
 import com.qiniu.android.storage.UploadManager;
-import com.qiniu.android.common.Zone;
 
 import org.json.JSONObject;
 
@@ -34,8 +32,8 @@ public class QiniuUploader {
         this.bucket = Prefs.getString(context, Prefs.KEY_BUCKET, QiniuConfig.BUCKET);
         this.domain = Prefs.getString(context, Prefs.KEY_DOMAIN, QiniuConfig.DOMAIN);
 
+        // zone 缺省即 AutoZone（自动匹配区域），旧写法 Zone.autoZone() 在 8.x 中不存在
         Configuration config = new Configuration.Builder()
-                .zone(Zone.autoZone())
                 .build();
         uploadManager = new UploadManager(config);
     }
@@ -54,7 +52,8 @@ public class QiniuUploader {
             return;
         }
 
-        String token = Auth.create(accessKey, secretKey).uploadToken(bucket, key, 3600);
+        // Android SDK 不含 Auth 类，本地按官方算法签发上传凭证（见 QiniuToken）
+        String token = QiniuToken.uploadToken(accessKey, secretKey, bucket, key, 3600);
 
         uploadManager.put(localPath, key, token, new UpCompletionHandler() {
             @Override
