@@ -21,12 +21,35 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: 安装 Android SDK 组件
+      - name: 安装 Android SDK cmdline-tools 并设置环境
         run: |
+          set -e
+          # 复用 runner 预装的 SDK 根目录；若不存在则自建
+          export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          if [ -z "$ANDROID_HOME" ]; then
+            export ANDROID_HOME="$HOME/android-sdk"
+          fi
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          mkdir -p "$ANDROID_HOME"
+          # 下载并解压 cmdline-tools（固定版本，不受 runner 镜像变化影响）
+          CMDTOOLS_DIR="$ANDROID_HOME/cmdline-tools"
+          if [ ! -x "$CMDTOOLS_DIR/latest/bin/sdkmanager" ]; then
+            mkdir -p "$CMDTOOLS_DIR"
+            curl -sSL -o /tmp/cmdline-tools.zip \
+              https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+            unzip -q -o /tmp/cmdline-tools.zip -d "$CMDTOOLS_DIR"
+            # 官方 zip 解压出来是 cmdline-tools/ 目录，规范布局要求放到 latest/
+            if [ -d "$CMDTOOLS_DIR/cmdline-tools" ]; then
+              mv "$CMDTOOLS_DIR/cmdline-tools" "$CMDTOOLS_DIR/latest"
+            fi
+          fi
+          export PATH="$CMDTOOLS_DIR/latest/bin:$PATH"
+          # 接受许可并安装组件
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0"
-          echo "ANDROID_HOME=$ANDROID_HOME"
           echo "SDK 组件安装完成"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
 
       - name: 授权 gradlew 执行权限
         run: chmod +x gradlew
