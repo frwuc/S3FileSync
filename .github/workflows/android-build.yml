@@ -21,21 +21,14 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: 设置 Gradle
-        uses: gradle/actions/setup-gradle@v3
+      - name: 设置 Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: 缓存 Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+      - name: 授权 gradlew 执行权限
+        run: chmod +x gradlew
 
       - name: 构建 Debug APK
-        run: gradle assembleDebug
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: 上传 APK 构建产物
         uses: actions/upload-artifact@v4
