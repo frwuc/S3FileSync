@@ -24,10 +24,12 @@ jobs:
 
       # 安装 Gradle 本体（官方 action，自动读取 wrapper properties 里的版本并缓存）
       # 用法上直接调 `gradle`，从而完全绕开手工维护的 gradle-wrapper.jar / gradlew 脚本
+      # validate-wrappers=false：本项目不再用 wrapper jar 构建，关闭其哈希白名单校验
       - name: 安装 Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.5'
+          validate-wrappers: false
 
       # GitHub ubuntu runner 已预装 Android SDK（ANDROID_HOME/ANDROID_SDK_ROOT 已设好）。
       # 这里只做两件事：接受许可 + 确保所需组件到位。
