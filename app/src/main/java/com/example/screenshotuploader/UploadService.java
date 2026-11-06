@@ -63,7 +63,11 @@ public class UploadService extends Service {
 
     private void performUpload() {
         Log.d(TAG, "开始执行定时上传任务");
-        int success = 0, fail = 0, skip = 0;
+        int skip = 0;
+        // 匿名内部类(Callback)里要修改计数器：局部变量须为 final/有效 final，
+        // 用 final int[] 做可变计数器（数组引用 final，元素可累加）
+        final int[] success = {0};
+        final int[] fail = {0};
 
         QiniuUploader uploader = new QiniuUploader(this);
 
@@ -97,13 +101,13 @@ public class UploadService extends Service {
                     public void onSuccess(String remoteKey, String url) {
                         uploadedSet.add(absPath);
                         saveUploadedPath(absPath);
-                        success++;
+                        success[0]++;
                         Log.d(TAG, "上传成功: " + fileName + " -> " + url);
                     }
 
                     @Override
                     public void onFail(String filePath, int code, String error) {
-                        fail++;
+                        fail[0]++;
                         Log.e(TAG, "上传失败: " + fileName + " code=" + code + " err=" + error);
                     }
                 });
@@ -116,7 +120,7 @@ public class UploadService extends Service {
             }
         }
 
-        Log.d(TAG, "上传任务完成: 成功=" + success + ", 失败=" + fail + ", 跳过=" + skip);
+        Log.d(TAG, "上传任务完成: 成功=" + success[0] + ", 失败=" + fail[0] + ", 跳过=" + skip);
     }
 
     private void loadUploadedSet() {
