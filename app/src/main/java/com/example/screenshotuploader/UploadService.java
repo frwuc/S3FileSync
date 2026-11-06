@@ -40,12 +40,14 @@ public class UploadService extends Service {
 
     private File uploadedRecordFile;
     private Set<String> uploadedSet = new HashSet<>();
+    private UploadLogger logger;
 
     @Override
     public void onCreate() {
         super.onCreate();
         uploadedRecordFile = new File(getFilesDir(), "uploaded.txt");
         loadUploadedSet();
+        logger = new UploadLogger(this);
         startForeground(NOTIFICATION_ID, createNotification("正在执行定时上传任务..."));
     }
 
@@ -73,6 +75,8 @@ public class UploadService extends Service {
         final int[] fail = {0};
 
         QiniuUploader uploader = new QiniuUploader(this);
+
+        logger.logExecutionStart();
 
         // 云端目录：从配置读取（用户可在 App 设置），空则放根目录
         String qiniuDir = Prefs.getString(this, Prefs.KEY_QINIU_DIR, QiniuConfig.UPLOAD_PREFIX);
@@ -124,12 +128,14 @@ public class UploadService extends Service {
                         uploadedSet.add(absPath);
                         saveUploadedPath(absPath);
                         success[0]++;
+                        logger.logUploadSuccess(fileName, remoteKey, url);
                         Log.d(TAG, "上传成功: " + fileName + " -> " + url);
                     }
 
                     @Override
                     public void onFail(String filePath, int code, String error) {
                         fail[0]++;
+                        logger.logUploadFail(fileName, code, error);
                         Log.e(TAG, "上传失败: " + fileName + " code=" + code + " err=" + error);
                     }
                 });
@@ -143,6 +149,7 @@ public class UploadService extends Service {
         }
 
         Log.d(TAG, "上传任务完成: 成功=" + success[0] + ", 失败=" + fail[0] + ", 跳过=" + skip);
+        logger.logExecution(success[0], fail[0], skip);
     }
 
     private void loadUploadedSet() {

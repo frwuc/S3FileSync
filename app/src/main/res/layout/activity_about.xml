@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F5F6FA">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:gravity="center_horizontal">
+
+        <!-- App 图标占位（用系统图标） -->
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@mipmap/ic_launcher"
+            android:contentDescription="App 图标"
+            android:layout_marginBottom="12dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="截图定时上传"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#333333"/>
+
+        <TextView
+            android:id="@+id/tv_about_version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="当前版本：v1.0"
+            android:textSize="14sp"
+            android:textColor="#2196F3"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="20dp"/>
+
+        <!-- 项目简介 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:padding="16dp"
+            android:elevation="2dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="项目简介"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:textColor="#333333"
+                android:layout_marginBottom="6dp"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="一款开源的 Android 截图自动备份工具。定时扫描手机里的截图，自动上传到你的七牛云对象存储，实现截图的自动云端备份。"
+                android:textSize="13sp"
+                android:textColor="#666666"
+                android:lineSpacingExtra="2dp"/>
+        </LinearLayout>
+
+        <!-- 开源地址 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:padding="16dp"
+            android:layout_marginTop="12dp"
+            android:elevation="2dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="开源地址（点击跳转浏览器）"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:textColor="#333333"
+                android:layout_marginBottom="10dp"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="GitHub"
+                android:textSize="12sp"
+                android:textColor="#999999"/>
+
+            <TextView
+                android:id="@+id/tv_about_github"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="https://github.com/frwuc/screenshot-uploader"
+                android:textSize="13sp"
+                android:textColor="#1976D2"
+                android:layout_marginBottom="10dp"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Gitee（码云）"
+                android:textSize="12sp"
+                android:textColor="#999999"/>
+
+            <TextView
+                android:id="@+id/tv_about_gitee"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="https://gitee.com/frwuc/screenshot-uploader"
+                android:textSize="13sp"
+                android:textColor="#C71D23"/>
+
+            <TextView
+                android:id="@+id/tv_about_license"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="开源协议：MIT License"
+                android:textSize="13sp"
+                android:textColor="#666666"
+                android:layout_marginTop="12dp"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="隐私说明：AK/SK 仅保存在手机本地，截图只上传到你自己的七牛云 bucket，不经手任何第三方服务器。"
+            android:textSize="12sp"
+            android:textColor="#999999"
+            android:lineSpacingExtra="2dp"
+            android:layout_marginTop="16dp"/>
+
+    </LinearLayout>
+</ScrollView>

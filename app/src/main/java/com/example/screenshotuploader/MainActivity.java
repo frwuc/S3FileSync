@@ -38,7 +38,7 @@ public class MainActivity extends AppCompatActivity {
     private Spinner spinnerLocalDir;
     private LinearLayout timesContainer;
     private TextView tvStatus;
-    private Button btnAddTime, btnSave, btnExecuteNow, btnBattery;
+    private Button btnAddTime, btnSave, btnExecuteNow, btnBattery, btnRecords, btnAbout;
 
     /** 常用本地截图目录，供下拉快速选择 */
     private static final String[] COMMON_LOCAL_DIRS = {
@@ -66,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
         btnSave = findViewById(R.id.btn_save);
         btnExecuteNow = findViewById(R.id.btn_execute_now);
         btnBattery = findViewById(R.id.btn_battery);
+        btnRecords = findViewById(R.id.btn_records);
+        btnAbout = findViewById(R.id.btn_about);
 
         etAccessKey.setText(Prefs.getString(this, Prefs.KEY_ACCESS_KEY, QiniuConfig.ACCESS_KEY));
         etSecretKey.setText(Prefs.getString(this, Prefs.KEY_SECRET_KEY, QiniuConfig.SECRET_KEY));
@@ -160,6 +162,11 @@ public class MainActivity extends AppCompatActivity {
         });
 
         btnBattery.setOnClickListener(v -> openBatteryOptimization());
+
+        btnRecords.setOnClickListener(v ->
+                startActivity(new Intent(this, RecordsActivity.class)));
+        btnAbout.setOnClickListener(v ->
+                startActivity(new Intent(this, AboutActivity.class)));
 
         updateStatus();
     }

@@ -312,6 +312,34 @@
             android:textColor="#999999"
             android:layout_marginTop="4dp"/>
 
+        <!-- 记录 / 关于 入口 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+
+            <Button
+                android:id="@+id/btn_records"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="📋 上传记录"
+                android:backgroundTint="#9C27B0"
+                android:textColor="@android:color/white"
+                android:layout_marginEnd="6dp"/>
+
+            <Button
+                android:id="@+id/btn_about"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="ℹ️ 关于"
+                android:backgroundTint="#607D8B"
+                android:textColor="@android:color/white"
+                android:layout_marginStart="6dp"/>
+        </LinearLayout>
+
         <!-- 状态 -->
         <TextView
             android:id="@+id/tv_status"
