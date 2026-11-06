@@ -23,47 +23,128 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="① 七牛云配置"
+                android:text="① 七牛云账号配置"
                 android:textStyle="bold"
                 android:textSize="17sp"
                 android:textColor="#333333"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="以下 4 项信息均来自七牛云控制台，需先注册七牛云并创建存储空间"
+                android:textSize="12sp"
+                android:textColor="#999999"
                 android:layout_marginBottom="12dp"/>
 
+            <!-- AccessKey -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="AccessKey（AK）"
+                android:textSize="13sp"
+                android:textColor="#555555"/>
             <EditText
                 android:id="@+id/et_access_key"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="AccessKey（AK）"
+                android:hint="40 位字母数字组合"
                 android:inputType="text"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📌 七牛云控制台 → 右上角头像 → 个人中心 → 密钥管理，复制 AK。形如：X7aB2cD4eF6gH8iJ0kL1mN3oP5qR7sT9u"
+                android:textSize="11sp"
+                android:textColor="#2196F3"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="10dp"/>
 
+            <!-- SecretKey -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="SecretKey（SK）"
+                android:textSize="13sp"
+                android:textColor="#555555"/>
             <EditText
                 android:id="@+id/et_secret_key"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="SecretKey（SK）"
+                android:hint="40 位字母数字组合（输入会被遮挡）"
                 android:inputType="textPassword"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📌 与 AK 同一页面的 SK，点击显示后复制。两者必须成对，务必保密勿泄露。"
+                android:textSize="11sp"
+                android:textColor="#2196F3"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="10dp"/>
 
+            <!-- Bucket -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Bucket（存储空间名称）"
+                android:textSize="13sp"
+                android:textColor="#555555"/>
             <EditText
                 android:id="@+id/et_bucket"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Bucket 空间名称"
+                android:hint="如 my-screenshots"
                 android:inputType="text"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📌 控制台 → 对象存储 Kodo → 空间管理 → 新建空间时起的名字（没建就先建一个）。只填名称本身，不带括号。"
+                android:textSize="11sp"
+                android:textColor="#2196F3"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="10dp"/>
 
+            <!-- Domain -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="上传域名（Region）"
+                android:textSize="13sp"
+                android:textColor="#555555"/>
             <EditText
                 android:id="@+id/et_domain"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="上传域名（默认 https://z0.qbox.me）"
+                android:hint="https://z0.qbox.me"
                 android:inputType="textUri"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📌 取决于 Bucket 所在区域：华东 z0、华北 z1、华南 z2、北美 na0、东南亚 as0。不确定就保持默认 z0。"
+                android:textSize="11sp"
+                android:textColor="#2196F3"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="10dp"/>
 
+            <!-- 云端目录 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="云端目录（上传到 Bucket 的哪个文件夹）"
+                android:textSize="13sp"
+                android:textColor="#555555"/>
             <EditText
                 android:id="@+id/et_qiniu_dir"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="云端目录（上传到七牛的哪个目录，如 daka_screenshots）"
-                android:inputType="text"
-                android:layout_marginTop="4dp"/>
+                android:hint="如 screenshots，留空则放根目录"
+                android:inputType="text"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📌 图片在云端的存放位置。填 screenshots 则最终路径为 bucket/screenshots/时间戳_文件名.jpg。只能用字母数字下划线短横线，不要以 / 开头。留空放根目录。"
+                android:textSize="11sp"
+                android:textColor="#2196F3"
+                android:layout_marginTop="2dp"/>
         </LinearLayout>
 
         <!-- ② 本地目录 -->
@@ -79,26 +160,61 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="② 本地截图目录"
+                android:text="② 本地截图目录（扫描手机哪个文件夹）"
                 android:textStyle="bold"
                 android:textSize="17sp"
                 android:textColor="#333333"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="App 只上传这个文件夹里的图片，选定后到点只备份该目录"
+                android:textSize="12sp"
+                android:textColor="#999999"
                 android:layout_marginBottom="12dp"/>
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="从常用目录中选择"
+                android:textSize="13sp"
+                android:textColor="#555555"/>
             <Spinner
                 android:id="@+id/spinner_local_dir"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@android:drawable/btn_dropdown"
                 android:padding="8dp"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📌 点开下拉，选中即自动填入下方输入框。一般选第一项 DCIM/Screenshots（系统截图默认保存处）。"
+                android:textSize="11sp"
+                android:textColor="#2196F3"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="12dp"/>
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="或手动输入完整路径（选\"自定义路径...\"后填写）"
+                android:textSize="13sp"
+                android:textColor="#555555"/>
             <EditText
                 android:id="@+id/et_local_dir"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="或手动输入目录绝对路径（如 /sdcard/DCIM/Screenshots）"
+                android:hint="/sdcard/DCIM/Screenshots"
                 android:inputType="text"
-                android:layout_marginTop="8dp"/>
+                android:textSize="13sp"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📌 必须是手机里的绝对路径，以 /sdcard/ 开头。例：/sdcard/DCIM/Screenshots、/sdcard/Pictures/Screenshots、/sdcard/WeiXin/截图。可在文件管理器长按目标文件夹查看路径。"
+                android:textSize="11sp"
+                android:textColor="#2196F3"
+                android:layout_marginTop="2dp"/>
         </LinearLayout>
 
         <!-- ③ 定时任务 -->
@@ -123,7 +239,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="可添加多个时间点（如 10:00、19:00），到点自动上传新增截图"
+                android:text="到这些时间点自动上传「上次之后新增」的截图，可设多个"
                 android:textSize="12sp"
                 android:textColor="#999999"
                 android:layout_marginBottom="8dp"/>
@@ -142,6 +258,14 @@
                 android:layout_marginTop="8dp"
                 android:backgroundTint="#E8EAF6"
                 android:textColor="#3F51B5"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📌 格式为 24 小时制 HH:mm，如 09:00、12:30、21:00。注意冒号是英文半角，小时分钟各两位。例：想每晚 8 点备份就填 20:00。"
+                android:textSize="11sp"
+                android:textColor="#2196F3"
+                android:layout_marginTop="8dp"/>
         </LinearLayout>
 
         <!-- 操作按钮 -->
@@ -149,7 +273,7 @@
             android:id="@+id/btn_save"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="保存配置并启用定时任务"
+            android:text="💾 保存配置并启用定时任务"
             android:layout_marginTop="16dp"
             android:backgroundTint="#4CAF50"
             android:textColor="@android:color/white"/>
@@ -158,19 +282,35 @@
             android:id="@+id/btn_execute_now"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="立即执行一次上传"
+            android:text="⚡ 立即执行一次上传（测试用）"
             android:layout_marginTop="8dp"
             android:backgroundTint="#2196F3"
             android:textColor="@android:color/white"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="先填完上面配置，点这里可立刻跑一次验证是否成功，再去设置定时。"
+            android:textSize="11sp"
+            android:textColor="#999999"
+            android:layout_marginTop="4dp"/>
 
         <Button
             android:id="@+id/btn_battery"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="设置电池优化白名单（vivo/OPPO 必做）"
-            android:layout_marginTop="8dp"
+            android:text="🔋 加入电池优化白名单（vivo/OPPO 必做）"
+            android:layout_marginTop="12dp"
             android:backgroundTint="#FF9800"
             android:textColor="@android:color/white"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="不做这步，定时任务常被系统杀掉导致不触发。强烈建议点击允许。"
+            android:textSize="11sp"
+            android:textColor="#999999"
+            android:layout_marginTop="4dp"/>
 
         <!-- 状态 -->
         <TextView
@@ -180,8 +320,10 @@
             android:text="状态：未启动"
             android:layout_marginTop="16dp"
             android:layout_marginBottom="16dp"
-            android:textSize="14sp"
-            android:textColor="#666666"/>
+            android:padding="12dp"
+            android:background="#EEEEEE"
+            android:textSize="13sp"
+            android:textColor="#555555"/>
 
     </LinearLayout>
 </ScrollView>
