@@ -586,6 +586,26 @@ Log.d(TAG, "... 成功=" + success[0] + ", 失败=" + fail[0] + ...);
 
 ---
 
+## 附：构建成功后如何下载 APK
+
+工作流最后一步用 `actions/upload-artifact@v4` 把 APK 作为 **Artifact（构建产物）** 上传。
+构建成功（Status = **Success**）后按下面取包：
+
+1. 进入本次运行的 **Summary** 页（就是显示绿色 ✅、Status: Success 的那个页面）。
+2. **往下滚动到页面底部**，找到 **Artifacts** 区域。
+   - 里面列出一项 **`app-debug-apk`**（工作流里 `name:` 起的名字）。
+3. **点击 `app-debug-apk` 下载**，得到一个 zip 压缩包。
+4. **解压 zip**，里面就是 **`app-debug.apk`**。
+5. 传到手机安装。首次安装需在系统设置里允许"安装未知来源应用"。
+
+**要点：**
+- Artifact 对应工作流里的路径 `app/build/outputs/apk/debug/app-debug.apk`（Debug 包）。
+- 保留期由 `retention-days: 7` 控制，**默认 7 天后自动过期**，需要就及时下载。
+- Artifact 是 zip，**必须解压**，zip 内才是可安装的 `.apk`。
+- 这是 **Debug 包**（调试签名），日常自用/测试没问题；若要上架应用商店需另配正式签名（keystore）出 Release 包。
+
+---
+
 ## 附带：补充 .gitignore
 
 原仓库没有 `.gitignore`，需补标准 Android 忽略项，避免本机构建缓存被误提交：
