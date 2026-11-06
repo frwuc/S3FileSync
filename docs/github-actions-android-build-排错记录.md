@@ -513,6 +513,79 @@ CI 日志拿不到时，可以直接从 Maven Central 下载目标版本 AAR，
 
 ---
 
+## 报错 13：setup-gradle 校验手工 jar 失败（改用 setup-gradle 后的新坑）
+
+**报错原文（关键行）：**
+```
+✗ Found unknown Gradle Wrapper JAR files:
+  d18ee6b... gradle/wrapper/gradle-wrapper.jar
+Error: At least one Gradle Wrapper Jar failed validation!
+```
+
+**根因：**
+改用官方 `gradle/actions/setup-gradle@v4` 装Gradle后，该 action 默认会
+**校验仓库里的 `gradle-wrapper.jar` 是否为 Gradle 官方发布版本**（比对其 SHA256
+是否在官方 wrapper jar 白名单）。而报错 3/4/5 里**手工合并的 jar** 哈希对不上
+官方任何版本 → 被判定为"未知/可疑 jar"，**在构建开始前就直接失败**。
+
+**解决办法：**
+既然已改用 setup-gradle 直接调 `gradle` 命令构建，wrapper jar/gradlew 脚本
+已彻底不需要，直接删掉 + 关闭校验：
+
+```
+git rm -f gradle/wrapper/gradle-wrapper.jar gradlew
+```
+
+工作流里 `setup-gradle` 加 `validate-wrappers: false`（双保险），构建命令改为
+`gradle assembleDebug`。三件套只剩 `gradle-wrapper.properties`（setup-gradle
+读它决定装哪个 Gradle 版本，可保留；也可在 action 里用 `gradle-version` 显式指定）。
+
+**要点：**
+- 官方 action 的 wrapper 校验是安全特性，但它会把"手工拼的 jar"判为可疑。
+- 若项目根本不靠 wrapper 构建，最干净的做法是删掉 wrapper jar，而非绕过校验。
+
+---
+
+## 报错 14：compileDebugJavaWithJavac 内部类修改局部变量（有效 final）
+
+**报错原文（关键行）：**
+```
+UploadService.java:100: error: local variables referenced from an inner class
+  must be final or effectively final
+                        success++;
+UploadService.java:106: error: ...
+                        fail++;
+```
+
+**根因：**
+`performUpload()` 的**局部变量** `success`、`fail` 在**匿名内部类**
+`QiniuUploader.Callback` 的 `onSuccess`/`onFail` 里被 `++` 修改。
+Java 要求匿名类引用的局部变量必须是 `final` 或"有效 final"（从未被重新赋值），
+而 `success++` 让它不再是有效 final → 编译失败。这是纯 Java 语言限制，
+与依赖、CI 环境无关。
+
+**解决办法：**
+用 `final int[]` 做**可变计数器**（数组引用是 final、元素可累加）：
+
+```java
+final int[] success = {0};
+final int[] fail = {0};
+
+// 回调里：
+success[0]++;
+fail[0]++;
+
+// 末尾日志：
+Log.d(TAG, "... 成功=" + success[0] + ", 失败=" + fail[0] + ...);
+```
+
+**要点：**
+- 匿名类/lambda 里要"累加计数"→ 用 `final int[]`、`AtomicInteger` 或提为成员变量。
+- 只读取（不重新赋值）的局部变量（如 `absPath`、`fileName`）无需改，本就有效 final。
+- 这是本地 Android Studio 也会报的错，CI 报出来说明之前编译阶段一直没跑到这。
+
+---
+
 ## 附带：补充 .gitignore
 
 原仓库没有 `.gitignore`，需补标准 Android 忽略项，避免本机构建缓存被误提交：
