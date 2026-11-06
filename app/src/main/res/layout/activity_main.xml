@@ -2,99 +2,184 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp">
+    android:background="#F5F6FA"
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="七牛云配置（在 App 界面填写）"
-            android:textStyle="bold"
-            android:textSize="18sp"
-            android:layout_marginBottom="8dp"/>
-
-        <EditText
-            android:id="@+id/et_access_key"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="AccessKey"
-            android:inputType="text"/>
-
-        <EditText
-            android:id="@+id/et_secret_key"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="SecretKey"
-            android:inputType="text"/>
-
-        <EditText
-            android:id="@+id/et_bucket"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Bucket名称"
-            android:inputType="text"/>
-
-        <EditText
-            android:id="@+id/et_domain"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="域名（如 https://z0.qbox.me）"
-            android:inputType="textUri"/>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="每天执行时间点（可添加多个，如 10:00、19:00）"
-            android:textStyle="bold"
-            android:textSize="16sp"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="8dp"/>
-
+        <!-- ① 七牛云配置 -->
         <LinearLayout
-            android:id="@+id/times_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"/>
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:padding="16dp"
+            android:elevation="2dp">
 
-        <Button
-            android:id="@+id/btn_add_time"
-            android:layout_width="wrap_content"
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="① 七牛云配置"
+                android:textStyle="bold"
+                android:textSize="17sp"
+                android:textColor="#333333"
+                android:layout_marginBottom="12dp"/>
+
+            <EditText
+                android:id="@+id/et_access_key"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="AccessKey（AK）"
+                android:inputType="text"/>
+
+            <EditText
+                android:id="@+id/et_secret_key"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="SecretKey（SK）"
+                android:inputType="textPassword"/>
+
+            <EditText
+                android:id="@+id/et_bucket"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Bucket 空间名称"
+                android:inputType="text"/>
+
+            <EditText
+                android:id="@+id/et_domain"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="上传域名（默认 https://z0.qbox.me）"
+                android:inputType="textUri"/>
+
+            <EditText
+                android:id="@+id/et_qiniu_dir"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="云端目录（上传到七牛的哪个目录，如 daka_screenshots）"
+                android:inputType="text"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+        <!-- ② 本地目录 -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="+ 添加时间点"
-            android:layout_marginTop="8dp"/>
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:padding="16dp"
+            android:layout_marginTop="12dp"
+            android:elevation="2dp">
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="② 本地截图目录"
+                android:textStyle="bold"
+                android:textSize="17sp"
+                android:textColor="#333333"
+                android:layout_marginBottom="12dp"/>
+
+            <Spinner
+                android:id="@+id/spinner_local_dir"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@android:drawable/btn_dropdown"
+                android:padding="8dp"/>
+
+            <EditText
+                android:id="@+id/et_local_dir"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="或手动输入目录绝对路径（如 /sdcard/DCIM/Screenshots）"
+                android:inputType="text"
+                android:layout_marginTop="8dp"/>
+        </LinearLayout>
+
+        <!-- ③ 定时任务 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:padding="16dp"
+            android:layout_marginTop="12dp"
+            android:elevation="2dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="③ 每天定时上传时间"
+                android:textStyle="bold"
+                android:textSize="17sp"
+                android:textColor="#333333"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="可添加多个时间点（如 10:00、19:00），到点自动上传新增截图"
+                android:textSize="12sp"
+                android:textColor="#999999"
+                android:layout_marginBottom="8dp"/>
+
+            <LinearLayout
+                android:id="@+id/times_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"/>
+
+            <Button
+                android:id="@+id/btn_add_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="＋ 添加时间点"
+                android:layout_marginTop="8dp"
+                android:backgroundTint="#E8EAF6"
+                android:textColor="#3F51B5"/>
+        </LinearLayout>
+
+        <!-- 操作按钮 -->
         <Button
             android:id="@+id/btn_save"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="保存配置并启用定时任务"
             android:layout_marginTop="16dp"
-            android:backgroundTint="#4CAF50"/>
+            android:backgroundTint="#4CAF50"
+            android:textColor="@android:color/white"/>
 
         <Button
             android:id="@+id/btn_execute_now"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="立即执行一次上传"
-            android:layout_marginTop="8dp"/>
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#2196F3"
+            android:textColor="@android:color/white"/>
 
         <Button
             android:id="@+id/btn_battery"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="设置电池优化白名单（vivo 必做）"
-            android:layout_marginTop="8dp"/>
+            android:text="设置电池优化白名单（vivo/OPPO 必做）"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#FF9800"
+            android:textColor="@android:color/white"/>
 
+        <!-- 状态 -->
         <TextView
             android:id="@+id/tv_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="状态：未启动"
             android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"
             android:textSize="14sp"
             android:textColor="#666666"/>
 

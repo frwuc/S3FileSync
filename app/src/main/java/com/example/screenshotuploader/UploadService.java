@@ -18,7 +18,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class UploadService extends Service {
@@ -71,7 +74,23 @@ public class UploadService extends Service {
 
         QiniuUploader uploader = new QiniuUploader(this);
 
-        for (String dirPath : SCREENSHOT_DIRS) {
+        // 云端目录：从配置读取（用户可在 App 设置），空则放根目录
+        String qiniuDir = Prefs.getString(this, Prefs.KEY_QINIU_DIR, QiniuConfig.UPLOAD_PREFIX);
+        if (qiniuDir == null) qiniuDir = "";
+        while (qiniuDir.startsWith("/")) qiniuDir = qiniuDir.substring(1);
+        while (qiniuDir.endsWith("/")) qiniuDir = qiniuDir.substring(0, qiniuDir.length() - 1);
+        final String prefix = qiniuDir; // 供内部类使用
+
+        // 本地目录：优先用用户设置的单一目录；未设置则回退到默认几个目录
+        List<String> dirsToScan = new ArrayList<>();
+        String customDir = Prefs.getString(this, Prefs.KEY_LOCAL_DIR, "");
+        if (customDir != null && !customDir.trim().isEmpty()) {
+            dirsToScan.add(customDir.trim());
+        } else {
+            dirsToScan.addAll(Arrays.asList(SCREENSHOT_DIRS));
+        }
+
+        for (String dirPath : dirsToScan) {
             File dir = new File(dirPath);
             if (!dir.exists() || !dir.isDirectory()) continue;
 
@@ -92,7 +111,10 @@ public class UploadService extends Service {
                 if (file.length() < 1024) continue;
 
                 String fileName = file.getName();
-                String key = QiniuConfig.UPLOAD_PREFIX + "/" + System.currentTimeMillis() + "_" + fileName;
+                // 云端目录为空时直接放 bucket 根目录，否则拼 前缀/时间戳_文件名
+                String key = prefix.isEmpty()
+                        ? System.currentTimeMillis() + "_" + fileName
+                        : prefix + "/" + System.currentTimeMillis() + "_" + fileName;
 
                 Log.d(TAG, "准备上传: " + fileName);
 

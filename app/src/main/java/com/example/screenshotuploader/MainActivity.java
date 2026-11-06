@@ -11,9 +11,11 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -21,6 +23,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -31,10 +34,19 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQ_PERMISSIONS = 1001;
     private static final int REQ_BATTERY = 1002;
 
-    private EditText etAccessKey, etSecretKey, etBucket, etDomain;
+    private EditText etAccessKey, etSecretKey, etBucket, etDomain, etQiniuDir, etLocalDir;
+    private Spinner spinnerLocalDir;
     private LinearLayout timesContainer;
     private TextView tvStatus;
     private Button btnAddTime, btnSave, btnExecuteNow, btnBattery;
+
+    /** 常用本地截图目录，供下拉快速选择 */
+    private static final String[] COMMON_LOCAL_DIRS = {
+            "/sdcard/DCIM/Screenshots",
+            "/sdcard/Pictures/Screenshots",
+            "/sdcard/DCIM/Camera",
+            "/sdcard/Pictures"
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,6 +57,9 @@ public class MainActivity extends AppCompatActivity {
         etSecretKey = findViewById(R.id.et_secret_key);
         etBucket = findViewById(R.id.et_bucket);
         etDomain = findViewById(R.id.et_domain);
+        etQiniuDir = findViewById(R.id.et_qiniu_dir);
+        etLocalDir = findViewById(R.id.et_local_dir);
+        spinnerLocalDir = findViewById(R.id.spinner_local_dir);
         timesContainer = findViewById(R.id.times_container);
         tvStatus = findViewById(R.id.tv_status);
         btnAddTime = findViewById(R.id.btn_add_time);
@@ -56,6 +71,10 @@ public class MainActivity extends AppCompatActivity {
         etSecretKey.setText(Prefs.getString(this, Prefs.KEY_SECRET_KEY, QiniuConfig.SECRET_KEY));
         etBucket.setText(Prefs.getString(this, Prefs.KEY_BUCKET, QiniuConfig.BUCKET));
         etDomain.setText(Prefs.getString(this, Prefs.KEY_DOMAIN, QiniuConfig.DOMAIN));
+        etQiniuDir.setText(Prefs.getString(this, Prefs.KEY_QINIU_DIR, QiniuConfig.UPLOAD_PREFIX));
+        etLocalDir.setText(Prefs.getString(this, Prefs.KEY_LOCAL_DIR, COMMON_LOCAL_DIRS[0]));
+
+        setupLocalDirSpinner();
 
         Set<String> savedTimes = Prefs.getStringSet(this, Prefs.KEY_TIMES, new HashSet<>());
         if (savedTimes.isEmpty()) {
@@ -70,10 +89,23 @@ public class MainActivity extends AppCompatActivity {
         btnAddTime.setOnClickListener(v -> addTimeRow(""));
 
         btnSave.setOnClickListener(v -> {
+            String qiniuDir = etQiniuDir.getText().toString().trim();
+            String localDir = etLocalDir.getText().toString().trim();
+
+            // 去掉云端目录可能误填的开头斜杠，避免拼出 // 开头的 key
+            while (qiniuDir.startsWith("/")) qiniuDir = qiniuDir.substring(1);
+
             Prefs.putString(this, Prefs.KEY_ACCESS_KEY, etAccessKey.getText().toString().trim());
             Prefs.putString(this, Prefs.KEY_SECRET_KEY, etSecretKey.getText().toString().trim());
             Prefs.putString(this, Prefs.KEY_BUCKET, etBucket.getText().toString().trim());
             Prefs.putString(this, Prefs.KEY_DOMAIN, etDomain.getText().toString().trim());
+            Prefs.putString(this, Prefs.KEY_QINIU_DIR, qiniuDir);
+            Prefs.putString(this, Prefs.KEY_LOCAL_DIR, localDir);
+
+            // 本地目录存在性提示（不阻断，目录可能稍后才生成）
+            if (!localDir.isEmpty() && !new File(localDir).isDirectory()) {
+                Toast.makeText(this, "提示：本地目录当前不存在，将按填写路径尝试扫描", Toast.LENGTH_LONG).show();
+            }
 
             List<String> newTimes = new ArrayList<>();
             for (int i = 0; i < timesContainer.getChildCount(); i++) {
@@ -91,7 +123,8 @@ public class MainActivity extends AppCompatActivity {
 
             UploadScheduler.schedule(this, newTimes);
 
-            tvStatus.setText("已保存，定时任务已设置");
+            tvStatus.setText("已保存 ✓  云端目录：" + (qiniuDir.isEmpty() ? "(根目录)" : qiniuDir)
+                    + " ｜ 本地目录：" + localDir);
             Toast.makeText(this, "配置已保存，每天将在设定时间自动上传截图到七牛云", Toast.LENGTH_LONG).show();
         });
 
@@ -105,6 +138,16 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "请先填写 AccessKey、SecretKey、Bucket", Toast.LENGTH_LONG).show();
                 return;
             }
+            if (TextUtils.isEmpty(etLocalDir.getText())) {
+                Toast.makeText(this, "请先填写本地截图目录", Toast.LENGTH_LONG).show();
+                return;
+            }
+            // 先把当前输入的目录保存，确保服务读到最新值
+            String qiniuDir = etQiniuDir.getText().toString().trim();
+            while (qiniuDir.startsWith("/")) qiniuDir = qiniuDir.substring(1);
+            Prefs.putString(this, Prefs.KEY_QINIU_DIR, qiniuDir);
+            Prefs.putString(this, Prefs.KEY_LOCAL_DIR, etLocalDir.getText().toString().trim());
+
             Intent svc = new Intent(this, UploadService.class);
             svc.setAction(UploadService.ACTION_UPLOAD);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -119,6 +162,46 @@ public class MainActivity extends AppCompatActivity {
         btnBattery.setOnClickListener(v -> openBatteryOptimization());
 
         updateStatus();
+    }
+
+    /**
+     * 常用目录下拉：选中即填入下方输入框；选"自定义路径..."则清空输入框让用户手输。
+     */
+    private void setupLocalDirSpinner() {
+        List<String> options = new ArrayList<>();
+        for (String d : COMMON_LOCAL_DIRS) options.add(d);
+        options.add("自定义路径...（在下方输入框填写）");
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, options);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerLocalDir.setAdapter(adapter);
+
+        spinnerLocalDir.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                if (position < COMMON_LOCAL_DIRS.length) {
+                    // 选中常用目录 -> 填入输入框（不覆盖正在编辑的自定义路径，若一致则跳过）
+                    String dir = COMMON_LOCAL_DIRS[position];
+                    if (!dir.equals(etLocalDir.getText().toString().trim())) {
+                        etLocalDir.setText(dir);
+                    }
+                }
+                // position == COMMON_LOCAL_DIRS.length 即"自定义路径..."，保留输入框当前内容供编辑
+            }
+
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {
+            }
+        });
+
+        // 若已保存的本地目录不在常用列表里，下拉停留在"自定义路径..."
+        String saved = etLocalDir.getText().toString().trim();
+        int idx = -1;
+        for (int i = 0; i < COMMON_LOCAL_DIRS.length; i++) {
+            if (COMMON_LOCAL_DIRS[i].equals(saved)) { idx = i; break; }
+        }
+        spinnerLocalDir.setSelection(idx >= 0 ? idx : COMMON_LOCAL_DIRS.length);
     }
 
     private void addTimeRow(String defaultTime) {
