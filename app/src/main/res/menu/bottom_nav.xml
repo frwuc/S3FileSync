@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_sync"
+        android:icon="@android:drawable/ic_popup_sync"
+        android:title="同步"/>
+
+    <item
+        android:id="@+id/nav_settings"
+        android:icon="@android:drawable/ic_menu_preferences"
+        android:title="设置"/>
+
+    <item
+        android:id="@+id/nav_logs"
+        android:icon="@android:drawable/ic_menu_recent_history"
+        android:title="日志"/>
+
+    <item
+        android:id="@+id/nav_about"
+        android:icon="@android:drawable/ic_menu_info_details"
+        android:title="关于"/>
+
+</menu>

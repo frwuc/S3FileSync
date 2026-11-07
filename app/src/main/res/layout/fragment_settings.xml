@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F5F6FA"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="设置"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#333333"
+            android:layout_marginBottom="4dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="点击各分区标题可展开 / 收起"
+            android:textSize="12sp"
+            android:textColor="#999999"
+            android:layout_marginBottom="12dp"/>
+
+        <!-- ① 七牛云配置（可折叠） -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:padding="16dp"
+            android:elevation="2dp">
+
+            <LinearLayout
+                android:id="@+id/header_qiniu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="① 七牛云账号"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    android:textColor="#333333"/>
+
+                <TextView
+                    android:id="@+id/arrow_qiniu"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="▾"
+                    android:textSize="18sp"
+                    android:textColor="#999999"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/body_qiniu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="12dp">
+
+                <EditText
+                    android:id="@+id/et_access_key"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="AccessKey（AK）"
+                    android:inputType="text"/>
+
+                <EditText
+                    android:id="@+id/et_secret_key"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="SecretKey（SK）"
+                    android:inputType="textPassword"/>
+
+                <EditText
+                    android:id="@+id/et_bucket"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Bucket 空间名称"
+                    android:inputType="text"/>
+
+                <EditText
+                    android:id="@+id/et_domain"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="上传域名（默认 https://z0.qbox.me）"
+                    android:inputType="textUri"/>
+
+                <EditText
+                    android:id="@+id/et_qiniu_dir"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="云端目录（如 daka_screenshots）"
+                    android:inputType="text"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📌 AK/SK 来自七牛云控制台→个人中心→密钥管理；Bucket 为对象存储空间名；云端目录为上传到 bucket 下的文件夹，留空放根目录。"
+                    android:textSize="11sp"
+                    android:textColor="#2196F3"
+                    android:layout_marginTop="6dp"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ② 本地目录（可折叠） -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:padding="16dp"
+            android:layout_marginTop="12dp"
+            android:elevation="2dp">
+
+            <LinearLayout
+                android:id="@+id/header_local"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="② 本地截图目录"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    android:textColor="#333333"/>
+
+                <TextView
+                    android:id="@+id/arrow_local"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="▾"
+                    android:textSize="18sp"
+                    android:textColor="#999999"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/body_local"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="12dp">
+
+                <Spinner
+                    android:id="@+id/spinner_local_dir"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@android:drawable/btn_dropdown"
+                    android:padding="8dp"/>
+
+                <EditText
+                    android:id="@+id/et_local_dir"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="或手动输入绝对路径（/sdcard/DCIM/Screenshots）"
+                    android:inputType="text"
+                    android:layout_marginTop="8dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📌 从下拉选常用目录，或选“自定义路径”后手填 /sdcard/ 开头的绝对路径。"
+                    android:textSize="11sp"
+                    android:textColor="#2196F3"
+                    android:layout_marginTop="6dp"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ③ 定时任务（可折叠） -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:padding="16dp"
+            android:layout_marginTop="12dp"
+            android:elevation="2dp">
+
+            <LinearLayout
+                android:id="@+id/header_times"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="③ 每天定时上传时间"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    android:textColor="#333333"/>
+
+                <TextView
+                    android:id="@+id/arrow_times"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="▾"
+                    android:textSize="18sp"
+                    android:textColor="#999999"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/body_times"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="12dp">
+
+                <LinearLayout
+                    android:id="@+id/times_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"/>
+
+                <Button
+                    android:id="@+id/btn_add_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="＋ 添加时间点"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="#E8EAF6"
+                    android:textColor="#3F51B5"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📌 24 小时制 HH:mm，如 10:00、19:00，可添加多个。"
+                    android:textSize="11sp"
+                    android:textColor="#2196F3"
+                    android:layout_marginTop="6dp"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 保存 / 电池 -->
+        <Button
+            android:id="@+id/btn_save"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="💾 保存配置并启用定时"
+            android:layout_marginTop="16dp"
+            android:backgroundTint="#4CAF50"
+            android:textColor="@android:color/white"/>
+
+        <Button
+            android:id="@+id/btn_battery"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🔋 加入电池优化白名单"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#FF9800"
+            android:textColor="@android:color/white"/>
+
+    </LinearLayout>
+</ScrollView>

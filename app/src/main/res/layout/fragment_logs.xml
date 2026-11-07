@@ -5,12 +5,23 @@
     android:orientation="vertical"
     android:background="#F5F6FA">
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="日志"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="#333333"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="16dp"/>
+
     <!-- 标签切换 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="8dp">
+        android:padding="12dp">
 
         <Button
             android:id="@+id/btn_tab_upload"
@@ -18,7 +29,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="上传记录"
-            android:backgroundTint="#2196F3"
+            android:backgroundTint="#9C27B0"
             android:textColor="@android:color/white"
             android:layout_marginEnd="4dp"/>
 
@@ -50,7 +61,7 @@
         android:layout_weight="1">
 
         <TextView
-            android:id="@+id/tv_records_content"
+            android:id="@+id/tv_logs_content"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="16dp"
@@ -60,9 +71,8 @@
             android:lineSpacingExtra="2dp"/>
     </ScrollView>
 
-    <!-- 清空 -->
     <Button
-        android:id="@+id/btn_clear_records"
+        android:id="@+id/btn_clear_logs"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="🗑 清空全部记录"

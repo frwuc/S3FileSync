@@ -11,7 +11,6 @@
         android:padding="24dp"
         android:gravity="center_horizontal">
 
-        <!-- App 图标占位（用系统图标） -->
         <ImageView
             android:layout_width="80dp"
             android:layout_height="80dp"
@@ -31,7 +30,7 @@
             android:id="@+id/tv_about_version"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="当前版本：v1.0"
+            android:text="当前版本：v1.1.0"
             android:textSize="14sp"
             android:textColor="#2196F3"
             android:layout_marginTop="6dp"
