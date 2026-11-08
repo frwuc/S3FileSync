@@ -61,7 +61,7 @@ App 通过 **AlarmManager** 在设定时间点唤醒前台服务，扫描配置�
 
 ### 方式一：下载现成 APK
 
-- **GitHub Releases**：<https://github.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader.apk`）
+- **GitHub Releases**：<https://github.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader-1.5.0.apk`）
 - **Gitee Releases（国内推荐）**：<https://gitee.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader-1.5.0.apk`，无需登录）
 - 也可从 **[Actions](https://github.com/frwuc/s3-fileuploader/actions)** 最新一次成功构建（绿色 ✅）的 **Artifacts** 里下载 `s3-fileuploader` 压缩包，解压即得 APK
 
