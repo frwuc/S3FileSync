@@ -14,6 +14,11 @@
 - 新增 `QiniuTokenTest`：管理凭证（QBox token）生成结果与官方算法的 Python 参考实现**逐字节一致**，
   排除签名实现问题；`QiniuToken` 抽出 Base64 编码钩子便于 JVM 单测（android.util.Base64 在单测不可用）
 
+### 变更：APK 产物名带版本号
+- 构建产物由固定的 `s3-fileuploader.apk` 改为 `s3-fileuploader-<版本号>.apk`
+  （如 `s3-fileuploader-1.6.2.apk`），本地同时保留多个版本的包时不会互相覆盖，也便于与发行版附件名对应；
+  CI 整理产物改用通配符拷贝，不再依赖固定文件名
+
 ## [v1.6.1] - 2026-11-08
 
 ### 优化：安装包 9.82MB → 3.37MB

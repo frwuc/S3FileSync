@@ -28,10 +28,11 @@ android {
         resConfigs 'zh', 'en'
     }
 
-    // 统一 APK 输出文件名为项目名，便于在 Release 中分发
+    // 产物带版本号（如 s3-fileuploader-1.6.2.apk），本地多版本并存时不会互相覆盖；
+    // debug 与 release 输出到不同目录，同名也不会冲突
     applicationVariants.all { variant ->
         variant.outputs.all { output ->
-            outputFileName = "s3-fileuploader.apk"
+            outputFileName = "s3-fileuploader-${variant.versionName}.apk"
         }
     }
 

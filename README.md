@@ -81,7 +81,7 @@ git clone https://gitee.com/frwuc/s3-fileuploader.git
 git clone https://github.com/frwuc/s3-fileuploader.git
 cd s3-fileuploader
 gradle assembleRelease     # R8 压缩 + 资源收缩，约 3.4MB，已签名可直接安装
-# 产物：app/build/outputs/apk/release/s3-fileuploader.apk
+# 产物：app/build/outputs/apk/release/s3-fileuploader-<版本号>.apk（如 s3-fileuploader-1.6.2.apk）
 
 # 需要断点调试时用 debug 包（不混淆，约 7.5MB）
 gradle assembleDebug

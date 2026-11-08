@@ -81,7 +81,7 @@ jobs:
           echo "解析到版本号：$VERSION"
           mkdir -p dist
           OUT="dist/s3-fileuploader-${VERSION}.apk"
-          cp app/build/outputs/apk/release/s3-fileuploader.apk "$OUT"
+          cp app/build/outputs/apk/release/s3-fileuploader-*.apk "$OUT"
           echo "APK_PATH=$OUT" >> "$GITHUB_ENV"
           ls -lh dist/
 
