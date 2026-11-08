@@ -226,6 +226,9 @@ app/src/test/java/com/frwuc/s3fileuploader/
 | 日志注入 | 文件名 / 服务端错误写日志前转义 `\`、换行与 `\|`，单字段截断 4 KB |
 | 依赖 | OkHttp 4.12.0、Okio 3.6.0（修复 CVE-2021-0341、CVE-2023-3635） |
 
+完整的漏洞清单、风险等级、代码位置与验证记录见
+[docs/安全扫描报告-v1.7.3.md](docs/安全扫描报告-v1.7.3.md)。
+
 > ⚠️ 请妥善保管 AK/SK，不要泄露给他人。如怀疑泄露请立即在七牛控制台重置密钥。
 >
 > 已知取舍：调试用 `app/keystore/debug.keystore` 为公开的 Android 默认调试密钥（口令 `android`），

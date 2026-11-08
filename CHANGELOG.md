@@ -30,6 +30,8 @@
 - 新增 / 扩充单测：`QiniuTokenTest`（policy 特殊字符转义）、
   `QiniuBucketApiTest`（rsf 主机白名单）、`ScanRulesTest`（符号链接与路径越界）；
   28 个用例全部通过；`gradle lintDebug` 0 error
+- 文档：完整安全扫描报告归档到 [docs/安全扫描报告-v1.7.3.md](docs/安全扫描报告-v1.7.3.md)
+  （问题清单、风险等级、代码位置、验证记录与残余风险）
 - 版本 1.7.3 / versionCode 15
 
 ## [v1.7.2] - 2026-11-08
