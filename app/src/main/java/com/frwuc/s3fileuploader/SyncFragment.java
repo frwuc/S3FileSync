@@ -80,7 +80,12 @@ public class SyncFragment extends Fragment {
                 && !TextUtils.isEmpty(Prefs.getString(requireContext(), Prefs.KEY_SECRET_KEY, ""));
         tvHint.setVisibility(configured ? View.GONE : View.VISIBLE);
 
-        tvStatus.setText("状态：" + (configured ? "已配置，就绪" : "未完成配置"));
+        // 自动同步是后台起的，这里顺带把「正在跑」的状态反映到页面上
+        if (UploadService.isRunning()) {
+            tvStatus.setText("状态：正在同步，请查看通知栏...");
+        } else {
+            tvStatus.setText("状态：" + (configured ? "已配置，就绪" : "未完成配置"));
+        }
     }
 
     private void doSync() {

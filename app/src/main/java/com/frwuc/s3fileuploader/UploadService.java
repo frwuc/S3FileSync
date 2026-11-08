@@ -42,6 +42,19 @@ public class UploadService extends Service {
     private Set<String> uploadedSet = new HashSet<>();
     private UploadLogger logger;
 
+    /**
+     * 当前是否有一次上传正在执行。
+     *
+     * <p>进程级标记，供「打开 App 自动同步」判断是否重复发起，也避免手动点击与
+     * 自动触发、定时任务之间并发跑两份上传。
+     */
+    private static final java.util.concurrent.atomic.AtomicBoolean RUNNING =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    public static boolean isRunning() {
+        return RUNNING.get();
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -53,16 +66,25 @@ public class UploadService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && ACTION_UPLOAD.equals(intent.getAction())) {
-            new Thread(() -> {
-                try {
-                    performUpload();
-                } finally {
-                    stopForeground(true);
-                    stopSelf();
-                }
-            }).start();
+        if (intent == null || !ACTION_UPLOAD.equals(intent.getAction())) {
+            // 非上传指令（如系统重建服务）：不常驻，直接结束，避免留下空的前台通知
+            stopSelf();
+            return START_NOT_STICKY;
         }
+        // 已有任务在跑：忽略本次请求，保证同一时刻只有一份上传
+        if (!RUNNING.compareAndSet(false, true)) {
+            Log.d(TAG, "已有上传任务在执行，忽略本次启动请求");
+            return START_NOT_STICKY;
+        }
+        new Thread(() -> {
+            try {
+                performUpload();
+            } finally {
+                RUNNING.set(false);
+                stopForeground(true);
+                stopSelf();
+            }
+        }).start();
         return START_NOT_STICKY;
     }
 

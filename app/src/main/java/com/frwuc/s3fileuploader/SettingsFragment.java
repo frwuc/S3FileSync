@@ -18,6 +18,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.fragment.app.Fragment;
 
 import java.io.File;
@@ -37,6 +38,7 @@ public class SettingsFragment extends Fragment {
     private Spinner spinnerLocalDir;
     private LinearLayout timesContainer;
     private Button btnAddTime, btnSave, btnBattery;
+    private SwitchCompat switchAutoSync;
 
     /** 常用本地文件目录，供下拉快速选择 */
     private static final String[] COMMON_LOCAL_DIRS = {
@@ -68,10 +70,12 @@ public class SettingsFragment extends Fragment {
         btnAddTime = view.findViewById(R.id.btn_add_time);
         btnSave = view.findViewById(R.id.btn_save);
         btnBattery = view.findViewById(R.id.btn_battery);
+        switchAutoSync = view.findViewById(R.id.switch_auto_sync);
 
         loadConfig();
         setupLocalDirSpinner();
         setupCollapsible(view);
+        setupAutoSyncSwitch();
 
         // 载入定时时间
         Set<String> savedTimes = Prefs.getStringSet(requireContext(), Prefs.KEY_TIMES, new HashSet<>());
@@ -189,6 +193,20 @@ public class SettingsFragment extends Fragment {
 
         UploadScheduler.schedule(requireContext(), newTimes);
         Toast.makeText(requireContext(), "配置已保存，每天将在设定时间自动上传新增文件到七牛云", Toast.LENGTH_LONG).show();
+    }
+
+    /**
+     * 「打开 App 时自动同步」开关：回填已保存状态，切换后立即写入，不依赖「保存配置」。
+     */
+    private void setupAutoSyncSwitch() {
+        // 先回填再挂监听，避免初始化时触发一次无意义的写入
+        switchAutoSync.setChecked(AutoSync.isEnabled(requireContext()));
+        switchAutoSync.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            AutoSync.setEnabled(requireContext(), isChecked);
+            Toast.makeText(requireContext(),
+                    isChecked ? R.string.auto_sync_state_on : R.string.auto_sync_state_off,
+                    Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void openBatteryOptimization() {

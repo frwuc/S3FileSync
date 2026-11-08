@@ -21,6 +21,7 @@
 - 🌐 **开机自启**：支持开机自动恢复定时任务，重启不丢配置
 - 🔋 **电池白名单引导**：一键引导加入电池优化白名单，避免后台被系统杀死（vivo/OPPO 等国产 ROM 必做）
 - 🎨 **五页签界面**：同步任务 / 执行记录 / 日志记录 / 设置 / 关于，入口、标题与内容一一对应
+- 🚀 **打开即同步（可选，默认关闭）**：开启后启动 App 首次进入界面即自动上传一次新增文件，旋转屏幕 / 切后台回来不会重复触发
 
 ---
 
@@ -49,7 +50,7 @@ App 通过 **AlarmManager** 在设定时间点唤醒前台服务，扫描配置�
 | 同步任务 | ⚡ 同步任务 | 当前配置摘要（Bucket / 本地目录 / 云端目录 / 定时时间）+ 立即同步 + 运行状态 |
 | 执行记录 | 🗂 执行记录 | **每次任务**的触发时间与结果汇总（成功 / 失败 / 跳过），顶部带累计统计卡片 |
 | 日志记录 | 📄 日志记录 | **每个文件**的上传明细，含云端 key 与访问地址，成功 / 失败用颜色区分 |
-| 设置 | 设置 | 七牛云账号、本地文件目录、定时时间三个可折叠分区 + 电池白名单 |
+| 设置 | 设置 | 七牛云账号、本地文件目录、定时时间三个可折叠分区 + 打开 App 自动同步开关 + 电池白名单 |
 | 关于 | 关于 | 版本号、开源仓库、联系邮箱、隐私说明 |
 
 「执行记录」与「日志记录」分别对应 `exec.log` 与 `uploads.log`，两页各自独立清空，互不影响。
@@ -65,7 +66,7 @@ App 通过 **AlarmManager** 在设定时间点唤醒前台服务，扫描配置�
 3. 在页面底部 **Artifacts** 区域下载 **`s3-fileuploader`**
 4. 解压 zip，得到 `s3-fileuploader.apk`，传到手机安装
 
-> 🇨🇳 国内网络不便访问 GitHub 时，可直接在 **[Gitee Releases](https://gitee.com/frwuc/s3-fileuploader/releases)** 下载 `s3-fileuploader-1.4.0.apk`，无需登录。
+> 🇨🇳 国内网络不便访问 GitHub 时，可直接在 **[Gitee Releases](https://gitee.com/frwuc/s3-fileuploader/releases)** 下载 `s3-fileuploader-1.5.0.apk`，无需登录。
 >
 > ⚠️ 附件为 debug 签名包，用于个人测试；如需正式发布请自行配置签名出 Release 包。
 
@@ -114,6 +115,15 @@ gradle assembleDebug
 
 配置完成后点 **"保存配置并启用定时任务"** 即可。
 
+### ④ 打开 App 时自动同步
+
+- **默认关闭**。关闭时打开 App 不会发起任何上传，只有定时任务和手动点击「立即同步」会触发。
+- 打开后，每次启动 App 首次进入主界面会自动上传一次新增文件；**只在进程启动后的首次进入触发**，
+  旋转屏幕、切后台再回来、切换页签都不会重复上传。
+- 触发前会检查：七牛云 AK/SK/Bucket 与本地目录是否配置完整、是否已授予存储权限、是否已有任务在跑；
+  任一项不满足则跳过，并用提示说明原因（不会强行上传）。
+- 开关切换后立即保存（不需要点「保存配置」），下次打开 App 生效。
+
 > 💡 **vivo / OPPO / 小米** 等机型请务必点 **"设置电池优化白名单"**，否则后台定时任务容易被系统杀掉。
 
 ---
@@ -137,7 +147,7 @@ app/src/main/java/com/frwuc/s3fileuploader/
 ├── SyncFragment.java      # 页签 1：同步任务
 ├── ExecutionFragment.java # 页签 2：执行记录（exec.log）
 ├── LogsFragment.java      # 页签 3：日志记录（uploads.log）
-├── SettingsFragment.java  # 页签 4：设置
+├── SettingsFragment.java  # 页签 4：设置（含自动同步开关）
 ├── AboutFragment.java     # 页签 5：关于
 ├── UploadLogger.java      # 执行记录 / 日志记录落盘与读取
 ├── UploadService.java     # 前台服务，执行扫描与上传
@@ -147,6 +157,7 @@ app/src/main/java/com/frwuc/s3fileuploader/
 ├── QiniuConfig.java       # 默认配置常量
 ├── QiniuToken.java        # 七牛上传凭证本地签发
 ├── QiniuUploader.java     # 七牛上传封装
+├── AutoSync.java          # 「打开 App 时自动同步」开关读取与触发判定
 └── Prefs.java             # 配置持久化
 ```
 

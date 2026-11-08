@@ -12,8 +12,8 @@ android {
         applicationId "com.frwuc.s3fileuploader"
         minSdk 21
         targetSdk 29
-        versionCode 6
-        versionName "1.4.0"
+        versionCode 7
+        versionName "1.5.0"
     }
 
     // 统一 APK 输出文件名为项目名，便于在 Release 中分发
@@ -40,4 +40,6 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'com.qiniu:qiniu-android-sdk:8.11.0'
+
+    testImplementation 'junit:junit:4.13.2'
 }

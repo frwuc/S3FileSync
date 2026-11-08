@@ -248,6 +248,62 @@
             </LinearLayout>
         </LinearLayout>
 
+        <!-- ④ 打开 App 时自动同步（开关，立即生效） -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_round"
+            android:padding="18dp"
+            android:layout_marginTop="12dp"
+            android:elevation="3dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/auto_sync_title"
+                        android:textStyle="bold"
+                        android:textSize="16sp"
+                        android:textColor="#1976D2"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/auto_sync_summary"
+                        android:textSize="11sp"
+                        android:textColor="#777777"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_auto_sync"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:contentDescription="@string/auto_sync_title"/>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/auto_sync_hint"
+                android:textSize="11sp"
+                android:textColor="#2196F3"
+                android:layout_marginTop="10dp"/>
+        </LinearLayout>
+
         <!-- 保存 / 电池 -->
         <Button
             android:id="@+id/btn_save"

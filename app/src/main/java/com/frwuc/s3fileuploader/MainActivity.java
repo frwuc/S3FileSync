@@ -36,6 +36,9 @@ public class MainActivity extends AppCompatActivity {
         if (savedInstanceState == null) {
             // 默认打开「同步任务」页
             bottomNav.setSelectedItemId(R.id.nav_sync);
+            // 打开 App：按「设置 → 打开 App 时自动同步」决定是否立即同步一次。
+            // 开关默认关闭；关闭时不发起任何上传请求。
+            AutoSync.onMainEntered(this);
         } else {
             // 重建（如旋转屏幕）：Fragment 由 FragmentManager 恢复，
             // 这里只补回页签记录与标题，避免重复创建页面

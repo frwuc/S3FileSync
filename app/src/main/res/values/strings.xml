@@ -7,4 +7,11 @@
     <string name="title_logs">日志记录</string>
     <string name="title_settings">设置</string>
     <string name="title_about">关于</string>
+
+    <!-- 设置项：打开 App 时自动同步（默认关闭） -->
+    <string name="auto_sync_title">④ 打开 App 时自动同步</string>
+    <string name="auto_sync_summary">默认关闭。开启后，启动 App 进入主界面时自动上传一次新增文件。</string>
+    <string name="auto_sync_hint">📌 仅在应用启动后首次进入主界面时触发一次：旋转屏幕、切后台再回来、切换页签都不会重复上传。需先完成七牛云与本地目录配置并授予存储权限，否则本次自动同步会被跳过。开关切换后立即保存，下次打开 App 生效。</string>
+    <string name="auto_sync_state_on">已开启：打开 App 时自动同步</string>
+    <string name="auto_sync_state_off">已关闭：打开 App 时不再自动同步</string>
 </resources>
