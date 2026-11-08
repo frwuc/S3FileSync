@@ -19,6 +19,8 @@ captures/
 # Keystore files
 *.jks
 *.keystore
+# 例外：固定调试密钥随仓库提交，保证本地与 CI 产出的 APK 签名一致（见 app/build.gradle）
+!app/keystore/debug.keystore
 
 # Generated files
 bin/

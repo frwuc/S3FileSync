@@ -5,6 +5,36 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [v1.6.1] - 2026-11-08
+
+### 优化：安装包 9.82MB → 3.37MB
+| 组成 | 优化前 | 优化后 | 手段 |
+|------|--------|--------|------|
+| dex | 4.85MB | 1.00MB | release 开启 R8 + `shrinkResources` |
+| `lib/*.so` | 3.44MB | 1.39MB | `abiFilters` 只留 arm64-v8a / armeabi-v7a |
+| `resources.arsc` | 0.97MB | 0.55MB | `resConfigs 'zh','en'` |
+
+- 体积大头是七牛 SDK 传递依赖的 `conscrypt-android`：它按 4 个 ABI 各带一份
+  `libconscrypt_jni.so`，而七牛自身代码并未引用它的任何类；x86 / x86_64 只对模拟器有意义，
+  默认不打进包，需要时 `gradle assembleDebug -PwithX86=true`
+- `packaging.resources.excludes` 去掉 META-INF 的 LICENSE / NOTICE / `*.kotlin_module`
+- proguard 补 keep 规则：`com.qiniu.android.**`（反射 + JNI）、`org.conscrypt.**`（JNI 按类名绑定，
+  且 Android 9 及以下 okhttp 会走到 `ConscryptSocketAdapter`，不能删也不能改名）、
+  `okhttp3.internal.platform.**`（平台探测用反射）
+
+### 变更：分发改为签名 release 包
+- 新增 `app/keystore/debug.keystore`（固定调试密钥：密码 `android`、别名 `androiddebugkey`），
+  debug 与 release 共用同一签名 → 本地与 CI 产出的包可互相覆盖安装，不用卸载重装
+- CI 与 README 的构建命令由 `assembleDebug` 改为 `assembleRelease`，Artifacts / Release 附件体积同步变小
+
+### 修复
+- `item_browser_entry.xml`：`ellipsize="middle"` 与 `maxLines="1"` 同时使用在部分机型会崩溃，
+  改为 `singleLine="true"`（lint `EllipsizeMaxLines`）
+- lint 关闭 `ExpiredTargetSdkVersion`：targetSdk 29 是刻意保留的后台存活策略，本项目不上架应用商店
+
+### 测试
+- 单测 15 项全绿；`gradle lintRelease` 0 error / 115 warning
+
 ## [v1.6.0] - 2026-11-08
 
 ### 新功能

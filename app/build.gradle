@@ -12,8 +12,8 @@ android {
         applicationId "com.frwuc.s3fileuploader"
         minSdk 21
         targetSdk 29
-        versionCode 8
-        versionName "1.6.0"
+        versionCode 9
+        versionName "1.6.1"
 
         // 只打真机用得到的 ABI。七牛 SDK 会带进 conscrypt 的 native 库，
         // x86 / x86_64 只对模拟器有意义，白白多出约 2MB。
@@ -35,12 +35,27 @@ android {
         }
     }
 
+    signingConfigs {
+        // 固定调试密钥（随仓库提交）：本地与 CI 用同一把钥匙，
+        // 保证两个仓库 / 两个渠道下载的包签名一致，可以互相覆盖安装。
+        // 这是 Android 默认调试密钥（密码 android、别名 androiddebugkey），
+        // 只用于自测分发，不构成任何正式发布场景的安全保证。
+        debug {
+            storeFile file('keystore/debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
     buildTypes {
         release {
             // 体积优化：代码压缩 + 资源收缩（debug 保持可断点调试，不启用）
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // 与 debug 同签名：装过旧包的机器可以直接覆盖安装
+            signingConfig signingConfigs.debug
         }
     }
     compileOptions {
@@ -51,6 +66,12 @@ android {
     packaging {
         resources.excludes += ['META-INF/LICENSE*', 'META-INF/NOTICE*',
                                'META-INF/DEPENDENCIES', 'META-INF/*.kotlin_module']
+    }
+
+    lint {
+        // targetSdk 29 是刻意保留的策略（规避高 target 的后台限制，见 README），
+        // 本项目也不上架应用商店，这条"需 target 31+"的检查不适用
+        disable 'ExpiredTargetSdkVersion'
     }
 }
 

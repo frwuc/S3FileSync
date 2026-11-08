@@ -62,11 +62,12 @@ App 通过 **AlarmManager** 在设定时间点唤醒前台服务，扫描配置�
 
 ### 方式一：下载现成 APK
 
-- **GitHub Releases**：<https://github.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader-1.6.0.apk`）
-- **Gitee Releases（国内推荐）**：<https://gitee.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader-1.6.0.apk`，无需登录）
+- **GitHub Releases**：<https://github.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader-1.6.1.apk`）
+- **Gitee Releases（国内推荐）**：<https://gitee.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader-1.6.1.apk`，无需登录）
 - 也可从 **[Actions](https://github.com/frwuc/s3-fileuploader/actions)** 最新一次成功构建（绿色 ✅）的 **Artifacts** 里下载 `s3-fileuploader` 压缩包，解压即得 APK
 
-> ⚠️ 附件为 debug 签名包，用于个人测试；如需正式发布请自行配置签名出 Release 包。
+> ⚠️ 附件用仓库内的固定调试密钥签名（`app/keystore/debug.keystore`），只用于个人自测；
+> 因为本地与 CI 用同一把钥匙，两个渠道下载的包可以互相覆盖安装。如需正式发布请自行配置签名出 Release 包。
 
 > 📦 两个仓库的代码与版本保持一致：`main` 分支与 `v*` 标签同时推送到 GitHub 与 Gitee，
 > 打标签后 CI 会自动构建并创建带 APK 的 Release。
@@ -79,9 +80,18 @@ git clone https://gitee.com/frwuc/s3-fileuploader.git
 # 或 GitHub
 git clone https://github.com/frwuc/s3-fileuploader.git
 cd s3-fileuploader
+gradle assembleRelease     # R8 压缩 + 资源收缩，约 3.4MB，已签名可直接安装
+# 产物：app/build/outputs/apk/release/s3-fileuploader.apk
+
+# 需要断点调试时用 debug 包（不混淆，约 7.5MB）
 gradle assembleDebug
-# 产物：app/build/outputs/apk/debug/s3-fileuploader.apk
+
+# 用 x86 模拟器调试时，需要把 x86 ABI 一起打进去
+gradle assembleDebug -PwithX86=true
 ```
+
+> 体积主要来自七牛 SDK 传递依赖的 conscrypt native 库（arm64 + armv7 约 1.4MB）。
+> x86 / x86_64 的 so 默认不打进包，需要模拟器时才用 `-PwithX86=true`。
 
 也可直接用 GitHub Actions 在线构建（推送代码即自动触发）。
 

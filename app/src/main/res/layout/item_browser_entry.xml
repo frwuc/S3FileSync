@@ -30,7 +30,7 @@
             android:layout_height="wrap_content"
             android:textSize="14sp"
             android:textColor="#333333"
-            android:maxLines="1"
+            android:singleLine="true"
             android:ellipsize="middle"/>
 
         <TextView

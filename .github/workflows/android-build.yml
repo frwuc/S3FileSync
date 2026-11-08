@@ -70,8 +70,8 @@ jobs:
           echo "SDK 组件安装完成"
 
       # 直接用 gradle 命令构建，不经过 gradlew（避免 wrapper jar 缺类/脚本版本问题）
-      - name: 构建 Debug APK
-        run: gradle assembleDebug --stacktrace --no-daemon
+      - name: 构建 Release APK（R8 + 资源收缩，已签名）
+        run: gradle assembleRelease --stacktrace --no-daemon
 
       # 产物带版本号，与 Gitee 发行版的命名保持一致（如 s3-fileuploader-1.6.0.apk）
       - name: 整理产物
@@ -81,7 +81,7 @@ jobs:
           echo "解析到版本号：$VERSION"
           mkdir -p dist
           OUT="dist/s3-fileuploader-${VERSION}.apk"
-          cp app/build/outputs/apk/debug/s3-fileuploader.apk "$OUT"
+          cp app/build/outputs/apk/release/s3-fileuploader.apk "$OUT"
           echo "APK_PATH=$OUT" >> "$GITHUB_ENV"
           ls -lh dist/
 
