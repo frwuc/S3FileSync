@@ -63,8 +63,8 @@ App 通过 **AlarmManager** 在设定时间点唤醒前台服务，扫描配置�
 
 ### 方式一：下载现成 APK
 
-- **GitHub Releases**：<https://github.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader-1.7.0.apk`）
-- **Gitee Releases（国内推荐）**：<https://gitee.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader-1.7.0.apk`，无需登录）
+- **GitHub Releases**：<https://github.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader-1.7.2.apk`）
+- **Gitee Releases（国内推荐）**：<https://gitee.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader-1.7.2.apk`，无需登录）
 - 也可从 **[Actions](https://github.com/frwuc/s3-fileuploader/actions)** 最新一次成功构建（绿色 ✅）的 **Artifacts** 里下载 `s3-fileuploader` 压缩包，解压即得 APK
 
 > ⚠️ 附件用仓库内的固定调试密钥签名（`app/keystore/debug.keystore`），只用于个人自测；
@@ -82,7 +82,7 @@ git clone https://gitee.com/frwuc/s3-fileuploader.git
 git clone https://github.com/frwuc/s3-fileuploader.git
 cd s3-fileuploader
 gradle assembleRelease     # R8 压缩 + 资源收缩，约 3.4MB，已签名可直接安装
-# 产物：app/build/outputs/apk/release/s3-fileuploader-<版本号>.apk（如 s3-fileuploader-1.7.0.apk）
+# 产物：app/build/outputs/apk/release/s3-fileuploader-<版本号>.apk（如 s3-fileuploader-1.7.2.apk）
 
 # 需要断点调试时用 debug 包（不混淆，约 7.5MB）
 gradle assembleDebug
