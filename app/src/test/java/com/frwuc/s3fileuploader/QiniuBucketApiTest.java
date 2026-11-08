@@ -1,6 +1,8 @@
 package com.frwuc.s3fileuploader;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -42,6 +44,19 @@ public class QiniuBucketApiTest {
         assertEquals("2024", QiniuBucketApi.leafName("daka_files/2024/", "daka_files/"));
         assertEquals("a.png", QiniuBucketApi.leafName("daka_files/a.png", "daka_files/"));
         assertEquals("root.png", QiniuBucketApi.leafName("root.png", ""));
+    }
+
+    @Test
+    public void rsfHostAllowlistRejectsLookalikeAndMalformedHosts() {
+        assertTrue(QiniuBucketApi.isTrustedRsfHost("rsf.qbox.me"));
+        assertTrue(QiniuBucketApi.isTrustedRsfHost("RSF-Z0.QINIUIO.COM"));
+        assertTrue(QiniuBucketApi.isTrustedRsfHost("rsf-cn-east-2.qiniucn.com"));
+        assertFalse(QiniuBucketApi.isTrustedRsfHost("evilqbox.me"));
+        assertFalse(QiniuBucketApi.isTrustedRsfHost("rsf.qbox.me.evil.example"));
+        assertFalse(QiniuBucketApi.isTrustedRsfHost("https://rsf.qbox.me/list"));
+        assertFalse(QiniuBucketApi.isTrustedRsfHost("user@rsf.qbox.me"));
+        assertFalse(QiniuBucketApi.isTrustedRsfHost("rsf.qbox.me:443"));
+        assertFalse(QiniuBucketApi.isTrustedRsfHost(""));
     }
 
     @Test

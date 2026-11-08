@@ -45,14 +45,25 @@ public class UploadLogger {
         }
     }
 
+    /** 单行日志字段转义：防止原始文件名/服务端错误伪造记录或扰乱栏位解析。 */
+    private static String field(String value) {
+        if (value == null) return "";
+        String escaped = value.replace("\\", "\\\\")
+                .replace("\r", "\\r").replace("\n", "\\n")
+                .replace("|", "\\|");
+        return escaped.length() > 4096 ? escaped.substring(0, 4096) + "..." : escaped;
+    }
+
     /** 记录单张图片上传成功。 */
     public void logUploadSuccess(String fileName, String key, String url) {
-        append(uploadsFile, now() + " | 成功 | " + fileName + " | " + key + " | " + url);
+        append(uploadsFile, now() + " | 成功 | " + field(fileName)
+                + " | " + field(key) + " | " + field(url));
     }
 
     /** 记录单张图片上传失败。 */
     public void logUploadFail(String fileName, int code, String error) {
-        append(uploadsFile, now() + " | 失败 | " + fileName + " | code=" + code + " | " + error);
+        append(uploadsFile, now() + " | 失败 | " + field(fileName)
+                + " | code=" + code + " | " + field(error));
     }
 
     /** 记录一次任务执行的汇总结果。 */
@@ -68,25 +79,27 @@ public class UploadLogger {
 
     /** 记录任意一行运行日志。 */
     public void logLine(String msg) {
-        append(execFile, now() + " | 日志 | " + msg);
+        append(execFile, now() + " | 日志 | " + field(msg));
     }
 
     /** 读取某个日志文件的最近 limit 行（按时间倒序，最新的在前）。 */
     public List<String> readRecent(File file, int limit) {
         List<String> lines = new ArrayList<>();
-        if (!file.exists()) return lines;
+        if (!file.exists() || limit <= 0) return lines;
+        // 只保留末尾 limit 行，避免日志长期增长后一次性把全文件读进内存。
+        java.util.LinkedList<String> tail = new java.util.LinkedList<>();
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = br.readLine()) != null) {
-                if (!line.trim().isEmpty()) lines.add(line);
+                if (line.trim().isEmpty()) continue;
+                tail.add(line);
+                if (tail.size() > limit) tail.removeFirst();
             }
         } catch (IOException ignored) {
         }
-        // 取末尾 limit 行并倒序
-        int from = Math.max(0, lines.size() - limit);
-        List<String> recent = new ArrayList<>(lines.subList(from, lines.size()));
-        java.util.Collections.reverse(recent);
-        return recent;
+        lines.addAll(tail);
+        java.util.Collections.reverse(lines);
+        return lines;
     }
 
     /** 最近的上传记录。 */

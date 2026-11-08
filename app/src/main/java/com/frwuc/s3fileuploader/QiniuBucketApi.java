@@ -61,6 +61,8 @@ public final class QiniuBucketApi {
 
     private static final int CONNECT_TIMEOUT_MS = 10000;
     private static final int READ_TIMEOUT_MS = 20000;
+    /** 1000 条/页的目录元数据正常远低于该值；限制异常响应造成的内存消耗。 */
+    private static final int MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 
     /** GET /list 不带 Content-Type（与官方 SDK 一致），也不参与「Qiniu」签名；
      *  若签名里写了 Content-Type 而请求未发送该头，服务端重算签名必然 401 bad token */
@@ -144,13 +146,13 @@ public final class QiniuBucketApi {
         String cached = RSF_HOST_CACHE.get(cacheKey);
         if (cached != null) return cached;
 
+        HttpURLConnection conn = null;
         try {
             String query = "ak=" + encode(accessKey) + "&bucket=" + encode(bucket);
-            HttpURLConnection conn = openGet(UC_QUERY_HOST, UC_QUERY_PATH, query, null, null);
+            conn = openGet(UC_QUERY_HOST, UC_QUERY_PATH, query, null, null);
             int code = conn.getResponseCode();
             String body = readAll(code == HttpURLConnection.HTTP_OK
                     ? conn.getInputStream() : conn.getErrorStream());
-            conn.disconnect();
             if (code == HttpURLConnection.HTTP_OK) {
                 JSONObject json = new JSONObject(body);
                 JSONArray hosts = json.optJSONArray("hosts");
@@ -159,8 +161,9 @@ public final class QiniuBucketApi {
                     if (rsf != null) {
                         JSONArray domains = rsf.optJSONArray("domains");
                         if (domains != null && domains.length() > 0) {
-                            String host = domains.optString(0, "");
-                            if (!host.isEmpty()) {
+                            String host = domains.optString(0, "").trim().toLowerCase(Locale.US);
+                            // 只接受七牛官方域名的纯主机名，防止异常 UC 响应把管理 token 带到任意主机。
+                            if (isTrustedRsfHost(host)) {
                                 RSF_HOST_CACHE.put(cacheKey, host);
                                 return host;
                             }
@@ -170,6 +173,8 @@ public final class QiniuBucketApi {
             }
         } catch (Exception ignored) {
             // 查不到区域就用默认主机，不影响主流程
+        } finally {
+            if (conn != null) conn.disconnect();
         }
         return DEFAULT_RSF_HOST;
     }
@@ -235,6 +240,8 @@ public final class QiniuBucketApi {
         URL url = new URL("https://" + host + path + (query.isEmpty() ? "" : "?" + query));
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
+        // 管理 token 只对当前主机签名；禁止自动跟随重定向，避免凭证被转发到其它主机。
+        conn.setInstanceFollowRedirects(false);
         conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
         conn.setReadTimeout(READ_TIMEOUT_MS);
         if (authorization != null) {
@@ -308,13 +315,29 @@ public final class QiniuBucketApi {
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             byte[] buf = new byte[4096];
             int n;
+            int total = 0;
             while ((n = is.read(buf)) != -1) {
+                total += n;
+                if (total > MAX_RESPONSE_BYTES) {
+                    throw new IOException("云端响应超过 8 MB，已中止读取");
+                }
                 bos.write(buf, 0, n);
             }
             return bos.toString("UTF-8");
-        } catch (IOException e) {
-            return "";
         }
+    }
+
+    /** 仅允许 UC 返回七牛官方域名下的纯主机名；带点后缀边界，拒绝 evilqbox.me。 */
+    static boolean isTrustedRsfHost(String host) {
+        if (host == null) return false;
+        String h = host.trim().toLowerCase(Locale.US);
+        if (h.isEmpty() || h.length() > 253 || h.contains("..")
+                || !h.matches("[a-z0-9]([a-z0-9.-]*[a-z0-9])?")) return false;
+        String[] officialSuffixes = {"qbox.me", "qiniuio.com", "qiniucn.com", "qiniu.com", "qiniuapi.com"};
+        for (String suffix : officialSuffixes) {
+            if (h.equals(suffix) || h.endsWith("." + suffix)) return true;
+        }
+        return false;
     }
 
     /** 目录前缀规范化：空 -> ""，非空则保证以 "/" 结尾。 */

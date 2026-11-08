@@ -107,6 +107,17 @@ public class QiniuTokenTest {
     }
 
     @Test
+    public void uploadTokenEscapesJsonScope() {
+        String token = QiniuToken.uploadToken("ak", "sk", "bucket", "a\"b\\c\n中文.txt", 3600);
+        String policy = new String(Base64.getUrlDecoder().decode(token.split(":")[2]),
+                java.nio.charset.StandardCharsets.UTF_8);
+        assertEquals(true, policy.startsWith(
+                "{\"scope\":\"bucket:a\\\"b\\\\c\\n中文.txt\",\"deadline\":"));
+        assertEquals("\"a\\\"b\\\\c\\n\\u0001\"",
+                QiniuToken.quoteJson("a\"b\\c\n\u0001"));
+    }
+
+    @Test
     public void uploadTokenStructure() {
         String token = QiniuToken.uploadToken("ak", "sk", "bucket", null, 3600);
         String[] parts = token.split(":");

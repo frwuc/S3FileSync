@@ -1,6 +1,7 @@
 package com.frwuc.s3fileuploader;
 
 import android.content.Context;
+import android.net.Uri;
 import android.util.Log;
 
 import com.qiniu.android.http.ResponseInfo;
@@ -47,25 +48,40 @@ public class QiniuUploader {
         }
 
         File file = new File(localPath);
-        if (!file.exists()) {
-            if (callback != null) callback.onFail(localPath, -1, "文件不存在");
+        if (!file.exists() || !file.isFile()) {
+            if (callback != null) callback.onFail(localPath, -1, "文件不存在或不是普通文件");
             return;
         }
 
-        // Android SDK 不含 Auth 类，本地按官方算法签发上传凭证（见 QiniuToken）
-        String token = QiniuToken.uploadToken(accessKey, secretKey, bucket, key, 3600);
+        try {
+            // Android SDK 不含 Auth 类，本地按官方算法签发上传凭证（见 QiniuToken）
+            String token = QiniuToken.uploadToken(accessKey, secretKey, bucket, key, 3600);
 
-        uploadManager.put(localPath, key, token, new UpCompletionHandler() {
-            @Override
-            public void complete(String key, ResponseInfo info, JSONObject response) {
-                if (info.isOK()) {
-                    Log.d(TAG, "上传成功: " + key);
-                    if (callback != null) callback.onSuccess(key, domain + "/" + key);
-                } else {
-                    Log.e(TAG, "上传失败: " + info.error + " code=" + info.statusCode);
-                    if (callback != null) callback.onFail(localPath, info.statusCode, info.error);
+            uploadManager.put(localPath, key, token, new UpCompletionHandler() {
+                @Override
+                public void complete(String key, ResponseInfo info, JSONObject response) {
+                    if (info.isOK()) {
+                        Log.d(TAG, "上传成功: " + key);
+                        if (callback != null) callback.onSuccess(key, buildFileUrl(key));
+                    } else {
+                        Log.e(TAG, "上传失败: " + info.error + " code=" + info.statusCode);
+                        if (callback != null) callback.onFail(localPath, info.statusCode, info.error);
+                    }
                 }
-            }
-        }, null);
+            }, null);
+        } catch (Exception e) {
+            // put()/签名也可能同步抛异常；统一走失败回调，保证调用方能结束等待并记录。
+            String message = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            Log.e(TAG, "上传请求启动失败", e);
+            if (callback != null) callback.onFail(localPath, -1, message);
+        }
+    }
+
+    /** 日志中的访问 URL：保留 key 的目录分隔符，编码空格、#、?、% 等路径特殊字符。 */
+    private String buildFileUrl(String key) {
+        String base = domain == null ? "" : domain.trim();
+        while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+        String encodedKey = Uri.encode(key, "/");
+        return base.isEmpty() ? encodedKey : base + "/" + encodedKey;
     }
 }

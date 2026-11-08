@@ -82,7 +82,7 @@ git clone https://gitee.com/frwuc/s3-fileuploader.git
 git clone https://github.com/frwuc/s3-fileuploader.git
 cd s3-fileuploader
 gradle assembleRelease     # R8 压缩 + 资源收缩，约 3.4MB，已签名可直接安装
-# 产物：app/build/outputs/apk/release/s3-fileuploader-<版本号>.apk（如 s3-fileuploader-1.7.2.apk）
+# 产物：app/build/outputs/apk/release/s3-fileuploader-<版本号>.apk（如 s3-fileuploader-1.7.3.apk）
 
 # 需要断点调试时用 debug 包（不混淆，约 7.5MB）
 gradle assembleDebug
@@ -199,10 +199,10 @@ app/src/main/java/com/frwuc/s3fileuploader/
 └── Prefs.java             # 配置持久化
 
 app/src/test/java/com/frwuc/s3fileuploader/
-├── ScanRulesTest.java     # 递归扫描 / 隐藏项跳过 / 相对路径 / key 拼接
+├── ScanRulesTest.java     # 递归扫描 / 隐藏项跳过 / 相对路径 / key 拼接 / 符号链接越界
 ├── BrowseSortTest.java    # 目录恒在前、名称与时间升降序
-├── QiniuTokenTest.java    # 上传凭证与管理凭证：与官方算法逐字节一致
-├── QiniuBucketApiTest.java # 参数排序编码、前缀规范化、签名原文
+├── QiniuTokenTest.java    # 上传与管理凭证：与官方算法逐字节一致、policy JSON 转义
+├── QiniuBucketApiTest.java # 参数排序编码、前缀规范化、签名原文、rsf 主机白名单
 └── AutoSyncDecisionTest.java # 自动同步触发条件
 ```
 
@@ -210,11 +210,27 @@ app/src/test/java/com/frwuc/s3fileuploader/
 
 ## 🔒 隐私与安全
 
-- 你的 **AK/SK 仅保存在手机本地**（SharedPreferences），不会上传到任何第三方服务器
+- 你的 **AK/SK 仅保存在手机本地**（SharedPreferences，`MODE_PRIVATE`），不会上传到任何第三方服务器
 - 文件只上传到**你自己配置的七牛云 bucket**，不经手任何中间服务器
 - 开源透明，所有逻辑可审计
 
+### 已实施的安全措施（v1.7.3 起）
+
+| 面向 | 措施 |
+| --- | --- |
+| 凭据留存 | `android:allowBackup="false"`，AK/SK 与 `uploaded.txt`、日志不会被系统备份带出设备 |
+| 传输 | 全部接口走 HTTPS；显式 `usesCleartextTraffic="false"`，不允许明文回落到 HTTP |
+| 上传凭证 | policy 做 JSON 转义，文件名含引号 / 反斜杠 / 换行也不会破坏凭证结构 |
+| 列举接口 | 管理 token 只对当前主机签名，禁止自动跟随重定向；区域主机限定七牛官方域名白名单；响应体上限 8 MB |
+| 路径穿越 | 扫描以所选目录的 canonical 路径为边界，指向目录外的符号链接一律跳过（并阻断链接环） |
+| 日志注入 | 文件名 / 服务端错误写日志前转义 `\`、换行与 `\|`，单字段截断 4 KB |
+| 依赖 | OkHttp 4.12.0、Okio 3.6.0（修复 CVE-2021-0341、CVE-2023-3635） |
+
 > ⚠️ 请妥善保管 AK/SK，不要泄露给他人。如怀疑泄露请立即在七牛控制台重置密钥。
+>
+> 已知取舍：调试用 `app/keystore/debug.keystore` 为公开的 Android 默认调试密钥（口令 `android`），
+> 入库是为了让各渠道安装包签名一致、可互相覆盖升级；它只用于个人自用分发，**不要用它签名上架应用商店**。
+> `targetSdk` 保持 29 是为兼容 `preserveLegacyExternalStorage` 的全盘目录访问，属刻意保留。
 
 ---
 

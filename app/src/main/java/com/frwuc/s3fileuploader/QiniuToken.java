@@ -46,7 +46,9 @@ public final class QiniuToken {
                                      String bucket, String key, long expiresSecond) {
         long deadline = System.currentTimeMillis() / 1000L + expiresSecond;
         String scope = (key == null || key.isEmpty()) ? bucket : bucket + ":" + key;
-        String policyJson = "{\"scope\":\"" + scope + "\",\"deadline\":" + deadline + "}";
+        // scope 含用户文件名，必须做 JSON 转义；否则引号、反斜杠或换行会破坏 policy，
+        // 使上传凭证失效，甚至改变服务端看到的字段含义。
+        String policyJson = "{\"scope\":" + quoteJson(scope) + ",\"deadline\":" + deadline + "}";
 
         String encodedPolicy = urlSafeBase64(policyJson.getBytes(StandardCharsets.UTF_8));
         byte[] sign = hmacSha1(secretKey.getBytes(StandardCharsets.UTF_8),
@@ -82,6 +84,35 @@ public final class QiniuToken {
         String encodedToken = urlSafeBase64(
                 (accessKey + ":" + encodedSign).getBytes(StandardCharsets.UTF_8));
         return accessKey + ":" + encodedSign + ":" + encodedToken;
+    }
+
+    /** JSON 字符串转义：与 org.json.JSONObject.quote 的必要规则一致，普通文件名输出不变。 */
+    static String quoteJson(String value) {
+        StringBuilder out = new StringBuilder(value.length() + 2).append('"');
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '"': out.append("\\\""); break;
+                case '\\': out.append("\\\\"); break;
+                case '\b': out.append("\\b"); break;
+                case '\f': out.append("\\f"); break;
+                case '\n': out.append("\\n"); break;
+                case '\r': out.append("\\r"); break;
+                case '\t': out.append("\\t"); break;
+                default:
+                    // JSON 不允许未转义的控制字符；U+2028/U+2029 也避免被某些解析器当换行。
+                    if (c < 0x20 || c == 0x2028 || c == 0x2029) {
+                        out.append("\\u");
+                        for (int shift = 12; shift >= 0; shift -= 4) {
+                            int digit = (c >> shift) & 0xF;
+                            out.append((char) (digit < 10 ? '0' + digit : 'a' + digit - 10));
+                        }
+                    } else {
+                        out.append(c);
+                    }
+            }
+        }
+        return out.append('"').toString();
     }
 
     /** 待签名原文：path [+ "?" + query] + "\n"。抽成独立方法便于单测校验格式。 */

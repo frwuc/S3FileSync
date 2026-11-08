@@ -23,6 +23,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class UploadService extends Service {
 
@@ -30,6 +32,9 @@ public class UploadService extends Service {
     private static final String TAG = "UploadService";
     private static final int NOTIFICATION_ID = 1001;
     private static final String CHANNEL_ID = "uploader_channel";
+
+    /** 单个文件等待上传回调的上限，超时按失败计，避免后台线程永久阻塞。 */
+    private static final int UPLOAD_TIMEOUT_SECONDS = 30 * 60;
 
     private static final String[] DEFAULT_SCAN_DIRS = {
             Environment.getExternalStorageDirectory() + "/DCIM/Screenshots",
@@ -40,6 +45,7 @@ public class UploadService extends Service {
 
     private File uploadedRecordFile;
     private Set<String> uploadedSet = new HashSet<>();
+    private boolean uploadedRecordsReady;
     private UploadLogger logger;
 
     /**
@@ -59,7 +65,7 @@ public class UploadService extends Service {
     public void onCreate() {
         super.onCreate();
         uploadedRecordFile = new File(getFilesDir(), "uploaded.txt");
-        loadUploadedSet();
+        uploadedRecordsReady = loadUploadedSet();
         logger = new UploadLogger(this);
         startForeground(NOTIFICATION_ID, createNotification("正在执行定时上传任务..."));
     }
@@ -99,6 +105,12 @@ public class UploadService extends Service {
         QiniuUploader uploader = new QiniuUploader(this);
 
         logger.logExecutionStart();
+        if (!uploadedRecordsReady) {
+            // 已有记录读取失败时若按空集合继续，会把全部历史文件重新上传。
+            logger.logLine("已有上传记录读取失败，为避免重复上传，本次任务已中止");
+            logger.logExecution(0, 1, 0);
+            return;
+        }
 
         // 云端目录：从配置读取（用户可在 App 设置），空则放根目录
         String qiniuDir = Prefs.getString(this, Prefs.KEY_QINIU_DIR, QiniuConfig.UPLOAD_PREFIX);
@@ -139,28 +151,50 @@ public class UploadService extends Service {
 
                 Log.d(TAG, "准备上传: " + fileName);
 
+                final CountDownLatch completed = new CountDownLatch(1);
                 uploader.upload(absPath, key, new QiniuUploader.Callback() {
                     @Override
                     public void onSuccess(String remoteKey, String url) {
-                        uploadedSet.add(absPath);
-                        saveUploadedPath(absPath);
-                        success[0]++;
-                        logger.logUploadSuccess(fileName, remoteKey, url);
-                        Log.d(TAG, "上传成功: " + fileName + " -> " + url);
+                        try {
+                            uploadedSet.add(absPath);
+                            if (!saveUploadedPath(absPath)) {
+                                logger.logLine("上传记录保存失败，重启后可能重复上传：" + fileName);
+                            }
+                            success[0]++;
+                            logger.logUploadSuccess(fileName, remoteKey, url);
+                            Log.d(TAG, "上传成功: " + fileName + " -> " + url);
+                        } finally {
+                            completed.countDown();
+                        }
                     }
 
                     @Override
                     public void onFail(String filePath, int code, String error) {
-                        fail[0]++;
-                        logger.logUploadFail(fileName, code, error);
-                        Log.e(TAG, "上传失败: " + fileName + " code=" + code + " err=" + error);
+                        try {
+                            fail[0]++;
+                            logger.logUploadFail(fileName, code, error);
+                            Log.e(TAG, "上传失败: " + fileName + " code=" + code + " err=" + error);
+                        } finally {
+                            completed.countDown();
+                        }
                     }
                 });
 
                 try {
-                    Thread.sleep(800);
+                    // SDK 通过异步回调报告结果；必须等回调后再累计汇总并停止服务，
+                    // 否则固定 sleep 800ms 会让大文件/慢网络出现“任务已完成、上传仍在进行”。
+                    // 同时设上限，防止回调永不返回时后台线程永久挂起、通知无法结束。
+                    if (!completed.await(UPLOAD_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                        fail[0]++;
+                        logger.logUploadFail(fileName, -1,
+                                "等待上传结果超时（" + UPLOAD_TIMEOUT_SECONDS + " 秒）");
+                        Log.e(TAG, "上传等待超时: " + fileName);
+                    }
+                    Thread.sleep(800); // 保留原有的请求间隔，避免瞬时打满上传接口
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
+                    logger.logLine("上传等待被中断，本次任务已中止");
+                    return;
                 }
             }
         }
@@ -169,22 +203,28 @@ public class UploadService extends Service {
         logger.logExecution(success[0], fail[0], skip);
     }
 
-    private void loadUploadedSet() {
+    private boolean loadUploadedSet() {
         uploadedSet.clear();
+        if (!uploadedRecordFile.exists()) return true;
         try (BufferedReader br = new BufferedReader(new FileReader(uploadedRecordFile))) {
             String line;
             while ((line = br.readLine()) != null) {
                 if (!line.isEmpty()) uploadedSet.add(line);
             }
-        } catch (IOException ignored) {
+            return true;
+        } catch (IOException e) {
+            Log.e(TAG, "读取上传记录失败", e);
+            return false;
         }
     }
 
-    private void saveUploadedPath(String path) {
+    private boolean saveUploadedPath(String path) {
         try (FileWriter fw = new FileWriter(uploadedRecordFile, true)) {
             fw.write(path + "\n");
+            return true;
         } catch (IOException e) {
             Log.e(TAG, "保存上传记录失败", e);
+            return false;
         }
     }
 

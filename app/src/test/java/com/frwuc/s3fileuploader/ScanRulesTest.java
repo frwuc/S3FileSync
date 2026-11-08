@@ -9,6 +9,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,6 +58,40 @@ public class ScanRulesTest {
         File top = new File(root, "top.txt");
         assertTrue(top.createNewFile());
         assertEquals("", ScanRules.relativeDirOf(root, top));
+    }
+
+    @Test
+    public void canonicalBoundaryRejectsSiblingAndParentPaths() throws Exception {
+        File root = tmp.newFolder("root-boundary").getCanonicalFile();
+        assertTrue(ScanRules.isWithinRoot(root, new File(root, "sub/file.txt").getCanonicalFile()));
+        assertTrue(ScanRules.isWithinRoot(root, root));
+        assertFalse(ScanRules.isWithinRoot(root,
+                new File(root, "../root-boundary-else/secret.txt").getCanonicalFile()));
+        assertFalse(ScanRules.isWithinRoot(root,
+                new File(root, "../outside.txt").getCanonicalFile()));
+    }
+
+    @Test
+    public void collectFilesDoesNotFollowSymlinkOutsideRoot() throws Exception {
+        File root = tmp.newFolder("root-links");
+        File outside = tmp.newFolder("outside-links");
+        File secret = new File(outside, "secret.txt");
+        assertTrue(secret.createNewFile());
+        assertTrue(new File(root, "normal.txt").createNewFile());
+        try {
+            java.nio.file.Files.createSymbolicLink(
+                    new File(root, "linked-secret.txt").toPath(), secret.toPath());
+            java.nio.file.Files.createSymbolicLink(
+                    new File(root, "linked-dir").toPath(), outside.toPath());
+        } catch (UnsupportedOperationException | IOException | SecurityException e) {
+            // Windows 无创建符号链接权限时无法执行该用例；边界判断由上一用例覆盖，Linux CI 会执行。
+            return;
+        }
+
+        List<File> out = new ArrayList<>();
+        ScanRules.collectFiles(root, out, 0);
+        assertEquals(1, out.size());
+        assertEquals("normal.txt", out.get(0).getName());
     }
 
     @Test

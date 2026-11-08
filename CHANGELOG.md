@@ -5,6 +5,33 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [v1.7.3] - 2026-11-08
+
+### 安全：漏洞扫描与加固（无功能/接口变更）
+- **依赖升级**：`okhttp 4.9.1 → 4.12.0`（CVE-2021-0341 证书主机名校验可被绕过）、
+  `okio 2.8.0 → 3.6.0`（CVE-2023-3635 GZIP 处理 DoS）；显式声明在 `app/build.gradle`，
+  与七牛 SDK 8.11.0 保持官方兼容组合
+- **凭据保护**：`android:allowBackup` 置为 `false`，避免 AK/SK（SharedPreferences）与
+  `uploaded.txt` / 日志被系统备份带出设备
+- **上传凭证**：policy 由手拼字符串改为 JSON 转义（`QiniuToken.quoteJson`），
+  文件名含引号 / 反斜杠 / 换行时不再破坏 policy 结构
+- **路径穿越**：`ScanRules` 以扫描根目录的 canonical 路径为边界，符号链接指向目录外时跳过，
+  并对已访问目录去重（同时阻断链接环）；`isWithinRoot` 带分隔符边界，`root2` 不会被误判为 `root` 子目录
+- **网络层**：列举接口禁止自动跟随重定向（管理 token 只对当前主机签名）；
+  UC 返回的 rsf 主机须落在七牛官方域名白名单内（`isTrustedRsfHost`，带点边界）；
+  响应体超过 8 MB 直接中止读取；connection 统一在 `finally` 中断开
+- **上传流程**：改为等待异步回调（`CountDownLatch`，上限 30 分钟）后再汇总，替代固定
+  `sleep 800ms`——避免「任务已显示完成、上传仍在进行」；已有的 `uploaded.txt` 读取失败时
+  中止本次任务，不再按空集合继续（否则会把全部历史文件重传一遍），记录写入失败会显式告警
+- **日志注入**：`UploadLogger` 对文件名 / 服务端错误做 `\`、`\r`、`\n`、`|` 转义并截断 4 KB；
+  读取改为只保留末尾 N 行的滑动窗口，日志长期增长不再一次性全量进内存
+- **配置**：显式 `android:usesCleartextTraffic="false"`（targetSdk 29 下默认已禁明文，
+  此处写明意图）
+- 新增 / 扩充单测：`QiniuTokenTest`（policy 特殊字符转义）、
+  `QiniuBucketApiTest`（rsf 主机白名单）、`ScanRulesTest`（符号链接与路径越界）；
+  28 个用例全部通过；`gradle lintDebug` 0 error
+- 版本 1.7.3 / versionCode 15
+
 ## [v1.7.2] - 2026-11-08
 
 ### 改进：浏览列表可看完整文件名
