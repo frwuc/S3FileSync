@@ -117,16 +117,12 @@ public class UploadService extends Service {
         }
 
         for (String dirPath : dirsToScan) {
-            File dir = new File(dirPath);
-            if (!dir.exists() || !dir.isDirectory()) continue;
+            File root = new File(dirPath);
+            if (!root.exists() || !root.isDirectory()) continue;
 
-            File[] files = dir.listFiles((d, name) -> {
-                String lower = name.toLowerCase();
-                return lower.endsWith(".jpg") || lower.endsWith(".jpeg")
-                        || lower.endsWith(".png") || lower.endsWith(".webp");
-            });
-
-            if (files == null) continue;
+            // 递归收集整棵目录树下的文件（不限制类型，图片 / 文档 / 压缩包 / 视频都传）
+            List<File> files = new ArrayList<>();
+            ScanRules.collectFiles(root, files, 0);
 
             for (File file : files) {
                 String absPath = file.getAbsolutePath();
@@ -134,13 +130,12 @@ public class UploadService extends Service {
                     skip++;
                     continue;
                 }
-                if (file.length() < 1024) continue;
+                // 只跳过空文件（多为写入中断留下的残骸），其余不再按大小/类型过滤
+                if (file.length() == 0) continue;
 
                 String fileName = file.getName();
-                // 云端目录为空时直接放 bucket 根目录，否则拼 前缀/时间戳_文件名
-                String key = prefix.isEmpty()
-                        ? System.currentTimeMillis() + "_" + fileName
-                        : prefix + "/" + System.currentTimeMillis() + "_" + fileName;
+                // 云端 key：云端目录/相对子目录/时间戳_原文件名，保留目录结构便于回溯
+                String key = ScanRules.buildRemoteKey(prefix, ScanRules.relativeDirOf(root, file), fileName);
 
                 Log.d(TAG, "准备上传: " + fileName);
 

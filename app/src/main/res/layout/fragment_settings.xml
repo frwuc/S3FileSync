@@ -192,7 +192,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="📌 从下拉选常用目录、点「浏览」逐级选择，或选“自定义路径”后手填 /sdcard/ 开头的绝对路径。"
+                    android:text="📌 从下拉选常用目录、点「浏览」逐级选择，或选“自定义路径”后手填 /sdcard/ 开头的绝对路径。该目录下所有文件都会上传（不限类型），子文件夹会递归扫描并在云端保留目录结构。"
                     android:textSize="11sp"
                     android:textColor="#2196F3"
                     android:layout_marginTop="6dp"/>
