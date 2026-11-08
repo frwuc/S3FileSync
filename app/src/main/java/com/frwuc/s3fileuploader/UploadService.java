@@ -31,7 +31,7 @@ public class UploadService extends Service {
     private static final int NOTIFICATION_ID = 1001;
     private static final String CHANNEL_ID = "uploader_channel";
 
-    private static final String[] SCREENSHOT_DIRS = {
+    private static final String[] DEFAULT_SCAN_DIRS = {
             Environment.getExternalStorageDirectory() + "/DCIM/Screenshots",
             Environment.getExternalStorageDirectory() + "/Pictures/Screenshots",
             "/sdcard/DCIM/Screenshots",
@@ -91,7 +91,7 @@ public class UploadService extends Service {
         if (customDir != null && !customDir.trim().isEmpty()) {
             dirsToScan.add(customDir.trim());
         } else {
-            dirsToScan.addAll(Arrays.asList(SCREENSHOT_DIRS));
+            dirsToScan.addAll(Arrays.asList(DEFAULT_SCAN_DIRS));
         }
 
         for (String dirPath : dirsToScan) {
@@ -184,7 +184,7 @@ public class UploadService extends Service {
     private void createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "截图上传服务", NotificationManager.IMPORTANCE_LOW);
+                    CHANNEL_ID, "文件上传服务", NotificationManager.IMPORTANCE_LOW);
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) manager.createNotificationChannel(channel);
         }

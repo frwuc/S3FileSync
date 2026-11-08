@@ -99,6 +99,22 @@ public class UploadLogger {
         return readRecent(execFile, limit);
     }
 
+    /** 清空「日志记录」（逐文件上传明细）。 */
+    public void clearUploads() {
+        try {
+            if (uploadsFile.exists()) uploadsFile.delete();
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** 清空「执行记录」（每次任务汇总）。 */
+    public void clearExec() {
+        try {
+            if (execFile.exists()) execFile.delete();
+        } catch (Exception ignored) {
+        }
+    }
+
     /** 清空所有日志。 */
     public void clearAll() {
         try {

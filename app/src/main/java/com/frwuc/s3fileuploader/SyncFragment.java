@@ -98,7 +98,7 @@ public class SyncFragment extends Fragment {
             return;
         }
         if (TextUtils.isEmpty(localDir)) {
-            Toast.makeText(requireContext(), "请先到「设置」填写本地截图目录", Toast.LENGTH_LONG).show();
+            Toast.makeText(requireContext(), "请先到「设置」填写本地文件目录", Toast.LENGTH_LONG).show();
             return;
         }
 

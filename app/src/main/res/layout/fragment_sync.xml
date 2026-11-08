@@ -18,7 +18,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="⚡ 截图同步"
+            android:text="⚡ 同步任务"
             android:textSize="24sp"
             android:textStyle="bold"
             android:textColor="@android:color/white"/>
@@ -26,7 +26,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="到设定时间自动把新增截图上传到七牛云"
+            android:text="到设定时间自动把新增文件上传到七牛云"
             android:textSize="13sp"
             android:textColor="#E3F2FD"
             android:layout_marginTop="4dp"/>
@@ -114,7 +114,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="扫描本地截图目录，把新增图片上传到云端"
+                android:text="扫描本地文件目录，把新增文件上传到云端"
                 android:textSize="12sp"
                 android:textColor="#999999"
                 android:gravity="center"

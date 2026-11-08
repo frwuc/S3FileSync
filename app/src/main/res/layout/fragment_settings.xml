@@ -101,7 +101,7 @@
                     android:id="@+id/et_qiniu_dir"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="云端目录（如 daka_screenshots）"
+                    android:hint="云端目录（如 daka_files）"
                     android:inputType="text"/>
 
                 <TextView
@@ -135,7 +135,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="② 本地截图目录"
+                    android:text="② 本地文件目录"
                     android:textStyle="bold"
                     android:textSize="16sp"
                     android:textColor="#1976D2"/>
@@ -167,7 +167,7 @@
                     android:id="@+id/et_local_dir"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="或手动输入绝对路径（/sdcard/DCIM/Screenshots）"
+                    android:hint="或手动输入绝对路径（/sdcard/DCIM/Camera）"
                     android:inputType="text"
                     android:layout_marginTop="8dp"/>
 

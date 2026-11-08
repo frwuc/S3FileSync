@@ -15,7 +15,7 @@ public class Prefs {
     public static final String KEY_TIMES = "upload_times";
     /** 云端目录：上传到七牛 bucket 下的哪个目录（key 前缀） */
     public static final String KEY_QINIU_DIR = "qiniu_dir";
-    /** 本地截图目录：扫描哪个本地目录下的图片 */
+    /** 本地文件目录：扫描哪个本地目录下的文件 */
     public static final String KEY_LOCAL_DIR = "local_dir";
 
     private static SharedPreferences get(Context context) {

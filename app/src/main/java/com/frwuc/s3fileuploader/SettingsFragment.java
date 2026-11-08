@@ -38,7 +38,7 @@ public class SettingsFragment extends Fragment {
     private LinearLayout timesContainer;
     private Button btnAddTime, btnSave, btnBattery;
 
-    /** 常用本地截图目录，供下拉快速选择 */
+    /** 常用本地文件目录，供下拉快速选择 */
     private static final String[] COMMON_LOCAL_DIRS = {
             "/sdcard/DCIM/Screenshots",
             "/sdcard/Pictures/Screenshots",
@@ -188,7 +188,7 @@ public class SettingsFragment extends Fragment {
         Prefs.putStringSet(requireContext(), Prefs.KEY_TIMES, new HashSet<>(newTimes));
 
         UploadScheduler.schedule(requireContext(), newTimes);
-        Toast.makeText(requireContext(), "配置已保存，每天将在设定时间自动上传截图到七牛云", Toast.LENGTH_LONG).show();
+        Toast.makeText(requireContext(), "配置已保存，每天将在设定时间自动上传新增文件到七牛云", Toast.LENGTH_LONG).show();
     }
 
     private void openBatteryOptimization() {

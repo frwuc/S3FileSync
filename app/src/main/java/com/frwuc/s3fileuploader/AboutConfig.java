@@ -20,5 +20,5 @@ public final class AboutConfig {
 
     /** 项目简介 */
     public static final String DESCRIPTION =
-            "一款开源的 Android 截图自动备份工具。定时扫描手机里的截图，自动上传到你的七牛云对象存储，实现截图的自动云端备份。";
+            "一款开源的 Android 文件自动备份工具。定时扫描手机里的指定目录，自动把新增文件上传到你的七牛云对象存储，实现文件自动云端备份。";
 }

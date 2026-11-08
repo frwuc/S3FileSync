@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">s3-fileuploader</string>
+
+    <!-- 一级页面标题：底部导航入口 / 标题栏 / 页面头部三处保持一致 -->
+    <string name="title_sync">同步任务</string>
+    <string name="title_execution">执行记录</string>
+    <string name="title_logs">日志记录</string>
+    <string name="title_settings">设置</string>
+    <string name="title_about">关于</string>
 </resources>

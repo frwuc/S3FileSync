@@ -1,20 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 底部导航固定 5 项，顺序与 MainActivity 路由、各页头部标题一一对应 -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
         android:id="@+id/nav_sync"
         android:icon="@android:drawable/ic_popup_sync"
-        android:title="同步"/>
+        android:title="同步任务"/>
+
+    <item
+        android:id="@+id/nav_exec"
+        android:icon="@android:drawable/ic_menu_recent_history"
+        android:title="执行记录"/>
+
+    <item
+        android:id="@+id/nav_log"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:title="日志记录"/>
 
     <item
         android:id="@+id/nav_settings"
         android:icon="@android:drawable/ic_menu_preferences"
         android:title="设置"/>
-
-    <item
-        android:id="@+id/nav_logs"
-        android:icon="@android:drawable/ic_menu_recent_history"
-        android:title="日志"/>
 
     <item
         android:id="@+id/nav_about"

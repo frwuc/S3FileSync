@@ -4,14 +4,14 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <!-- Fragment 容器：4 个标签页内容在此切换 -->
+    <!-- Fragment 容器：5 个一级页面的内容在此切换 -->
     <FrameLayout
         android:id="@+id/fragment_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"/>
 
-    <!-- 底部导航：设置 / 同步 / 日志 / 关于 -->
+    <!-- 底部导航：同步任务 / 执行记录 / 日志记录 / 设置 / 关于 -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottom_nav"
         android:layout_width="match_parent"
