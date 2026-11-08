@@ -1,6 +1,7 @@
 # s3-fileuploader（文件定时上传）
 
 [![Build APK](https://github.com/frwuc/s3-fileuploader/actions/workflows/android-build.yml/badge.svg)](https://github.com/frwuc/s3-fileuploader/actions/workflows/android-build.yml)
+[![Gitee](https://img.shields.io/badge/Gitee-frwuc%2Fs3--fileuploader-C71D23.svg)](https://gitee.com/frwuc/s3-fileuploader)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 一款开源的 **Android 文件自动备份工具**。定时扫描手机里的指定目录，自动把新增文件上传到你的**七牛云**对象存储，实现文件自动云端备份。
@@ -64,11 +65,16 @@ App 通过 **AlarmManager** 在设定时间点唤醒前台服务，扫描配置�
 3. 在页面底部 **Artifacts** 区域下载 **`s3-fileuploader`**
 4. 解压 zip，得到 `s3-fileuploader.apk`，传到手机安装
 
-> ⚠️ Debug 包用于个人测试；如需正式发布请自行配置签名出 Release 包。
+> 🇨🇳 国内网络不便访问 GitHub 时，可直接在 **[Gitee Releases](https://gitee.com/frwuc/s3-fileuploader/releases)** 下载 `s3-fileuploader-1.4.0.apk`，无需登录。
+>
+> ⚠️ 附件为 debug 签名包，用于个人测试；如需正式发布请自行配置签名出 Release 包。
 
 ### 方式二：自己构建
 
 ```bash
+# Gitee（国内推荐）
+git clone https://gitee.com/frwuc/s3-fileuploader.git
+# 或 GitHub
 git clone https://github.com/frwuc/s3-fileuploader.git
 cd s3-fileuploader
 gradle assembleDebug
