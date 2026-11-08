@@ -61,14 +61,14 @@ App 通过 **AlarmManager** 在设定时间点唤醒前台服务，扫描配置�
 
 ### 方式一：下载现成 APK
 
-1. 进入本仓库的 **[Actions](https://github.com/frwuc/s3-fileuploader/actions)** 页面
-2. 点开最新一次成功的构建（绿色 ✅）
-3. 在页面底部 **Artifacts** 区域下载 **`s3-fileuploader`**
-4. 解压 zip，得到 `s3-fileuploader.apk`，传到手机安装
+- **GitHub Releases**：<https://github.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader.apk`）
+- **Gitee Releases（国内推荐）**：<https://gitee.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader-1.5.0.apk`，无需登录）
+- 也可从 **[Actions](https://github.com/frwuc/s3-fileuploader/actions)** 最新一次成功构建（绿色 ✅）的 **Artifacts** 里下载 `s3-fileuploader` 压缩包，解压即得 APK
 
-> 🇨🇳 国内网络不便访问 GitHub 时，可直接在 **[Gitee Releases](https://gitee.com/frwuc/s3-fileuploader/releases)** 下载 `s3-fileuploader-1.5.0.apk`，无需登录。
->
 > ⚠️ 附件为 debug 签名包，用于个人测试；如需正式发布请自行配置签名出 Release 包。
+
+> 📦 两个仓库的代码与版本保持一致：`main` 分支与 `v*` 标签同时推送到 GitHub 与 Gitee，
+> 打标签后 CI 会自动构建并创建带 APK 的 Release。
 
 ### 方式二：自己构建
 
