@@ -92,6 +92,21 @@ public class QiniuTokenTest {
     }
 
     @Test
+    public void qiniuMacTokenGetWithoutContentTypeMatchesOfficial() {
+        // 真实列举请求是 GET 且不带 Content-Type（官方 SDK _get_with_qiniu_mac 只有 User-Agent 头）。
+        // 曾因签名原文里写了 Content-Type 而请求未发送该头，服务端重算不一致报 401 bad token。
+        // Python 参考实现（官方算法）计算结果：
+        //   data = "GET /list?bucket=mybucket&delimiter=%2F&limit=1000&prefix=abc%2Fdef%2F\n"
+        //        + "Host: rsf.qbox.me"
+        //        + "\nX-Qiniu-Date: 20261108T120000Z"
+        //        + "\n\n"
+        String token = QiniuToken.qiniuMacToken("test_access_key", "test_secret_key",
+                "GET", "/list", "bucket=mybucket&delimiter=%2F&limit=1000&prefix=abc%2Fdef%2F",
+                "rsf.qbox.me", "", "20261108T120000Z");
+        assertEquals("test_access_key:U1LWK5PRSq3xFj7gTfZ433WSOvw=", token);
+    }
+
+    @Test
     public void uploadTokenStructure() {
         String token = QiniuToken.uploadToken("ak", "sk", "bucket", null, 3600);
         String[] parts = token.split(":");

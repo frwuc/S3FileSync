@@ -5,6 +5,17 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [v1.7.1] - 2026-11-08
+
+### 修复：云端浏览 401 bad token（新旧签名均被拒）
+- 根因：「Qiniu」签名的原文里写了 `Content-Type: application/x-www-form-urlencoded`，
+  但 GET 请求实际并未发送该头（官方 SDK `_get_with_qiniu_mac` 只有 User-Agent），服务端按
+  实际请求重算签名少了一行 → 必然 401 bad token；QBox 老签名同时失败是因为账号只认新签名，
+  于是出现「新旧两种签名均被拒绝」的假象，被误判为密钥问题
+- 修复：GET 请求不再把 Content-Type 签进原文（与官方 SDK 行为一致），
+  新增单测 `qiniuMacTokenGetWithoutContentTypeMatchesOfficial` 固定真实请求形态的基准值
+- 版本 1.7.1 / versionCode 13
+
 ## [v1.7.0] - 2026-11-08
 
 ### 新增：不限文件类型 + 递归子目录

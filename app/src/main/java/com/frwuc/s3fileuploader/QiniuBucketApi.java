@@ -62,8 +62,9 @@ public final class QiniuBucketApi {
     private static final int CONNECT_TIMEOUT_MS = 10000;
     private static final int READ_TIMEOUT_MS = 20000;
 
-    /** GET /list 用的 Content-Type：与官方 SDK 一致，且参与「Qiniu」签名，改了会导致 401 */
-    private static final String REQUEST_CONTENT_TYPE = "application/x-www-form-urlencoded";
+    /** GET /list 不带 Content-Type（与官方 SDK 一致），也不参与「Qiniu」签名；
+     *  若签名里写了 Content-Type 而请求未发送该头，服务端重算签名必然 401 bad token */
+    private static final String REQUEST_CONTENT_TYPE = "";
 
     /** rsf 主机缓存：key = ak@bucket。区域信息带 ttl，进程内缓存即可 */
     private static final Map<String, String> RSF_HOST_CACHE = new ConcurrentHashMap<>();
@@ -190,7 +191,9 @@ public final class QiniuBucketApi {
             throws IOException {
         String xQiniuDate = utcTimestamp();
 
-        // 1) 新版「Qiniu」签名：现行官方 SDK 的方案，较新的账号只接受这一种
+        // 1) 新版「Qiniu」签名：现行官方 SDK 的方案，较新的账号只接受这一种。
+        //    注意：签名必须与实际发送的请求一致——GET 不发 Content-Type，签名里也不能带（踩过坑：
+        //    曾把 Content-Type 签进去而请求未发送该头，导致服务端重算不一致报 401 bad token）
         String qiniuToken = QiniuToken.qiniuMacToken(accessKey, secretKey, "GET",
                 LIST_PATH, query, host, REQUEST_CONTENT_TYPE, xQiniuDate);
         Response resp = doRequest(host, query, "Qiniu " + qiniuToken, xQiniuDate);
