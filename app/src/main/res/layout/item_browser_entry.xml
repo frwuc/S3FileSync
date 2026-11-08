@@ -24,14 +24,16 @@
         android:layout_weight="1"
         android:orientation="vertical">
 
+        <!-- 文件名允许换行，尽量把完整名称直接展示出来；极长名称点条目看完整信息 -->
         <TextView
             android:id="@+id/tv_entry_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="14sp"
             android:textColor="#333333"
-            android:singleLine="true"
-            android:ellipsize="middle"/>
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:breakStrategy="simple"/>
 
         <TextView
             android:id="@+id/tv_entry_meta"

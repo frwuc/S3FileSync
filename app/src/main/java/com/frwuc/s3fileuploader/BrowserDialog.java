@@ -1,5 +1,7 @@
 package com.frwuc.s3fileuploader;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.os.Environment;
 import android.os.Handler;
@@ -175,9 +177,41 @@ public class BrowserDialog {
             currentPath = entry.path;
             refresh();
         } else {
-            // 文件不可进入，给一条包含路径的提示，方便核对是不是要同步的内容
-            Toast.makeText(context, entry.path + "\n" + metaOf(entry), Toast.LENGTH_SHORT).show();
+            // 文件不可进入：弹出完整信息（名称不截断、可选中复制），方便核对是不是要同步的内容
+            showFileDetail(entry);
         }
+    }
+
+    /** 文件详情：完整文件名 / 路径 / 大小 / 时间，文本可长按选中，也可一键复制文件名。 */
+    private void showFileDetail(BrowseEntry entry) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("文件名：").append(entry.name)
+                .append("\n\n完整路径：").append(entry.path)
+                .append("\n\n大小：").append(formatSize(entry.size));
+        if (entry.mtimeMs > 0) {
+            sb.append("\n修改时间：").append(TIME_FMT.format(new Date(entry.mtimeMs)));
+        }
+
+        AlertDialog detail = new AlertDialog.Builder(context)
+                .setTitle("文件信息")
+                .setMessage(sb.toString())
+                .setPositiveButton("复制文件名", (d, w) -> copyFileName(entry.name))
+                .setNegativeButton("关闭", null)
+                .create();
+        detail.setOnShowListener(d -> {
+            // 让正文可长按选中复制（AlertDialog 的 message 默认不可选）
+            TextView msg = detail.findViewById(android.R.id.message);
+            if (msg != null) msg.setTextIsSelectable(true);
+        });
+        detail.show();
+    }
+
+    private void copyFileName(String name) {
+        ClipboardManager cm =
+                (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+        if (cm == null) return;
+        cm.setPrimaryClip(ClipData.newPlainText("文件名", name));
+        Toast.makeText(context, "已复制文件名", Toast.LENGTH_SHORT).show();
     }
 
     private void pickCurrent() {
