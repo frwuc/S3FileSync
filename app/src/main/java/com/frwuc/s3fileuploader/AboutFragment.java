@@ -1,4 +1,4 @@
-package com.example.screenshotuploader;
+package com.frwuc.s3fileuploader;
 
 import android.content.Intent;
 import android.net.Uri;
@@ -69,7 +69,7 @@ public class AboutFragment extends Fragment {
                 Intent intent = new Intent(Intent.ACTION_SENDTO);
                 intent.setData(Uri.parse("mailto:" + email));
                 intent.putExtra(Intent.EXTRA_EMAIL, new String[]{email});
-                intent.putExtra(Intent.EXTRA_SUBJECT, "S3-fileuploader 反馈");
+                intent.putExtra(Intent.EXTRA_SUBJECT, "s3-fileuploader 反馈");
                 startActivity(intent);
             } catch (Exception ignored) {
             }

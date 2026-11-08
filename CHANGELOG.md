@@ -1,9 +1,22 @@
 # 更新日志 / CHANGELOG
 
-本文件记录 [截图定时上传 (ScreenshotUploader)](https://github.com/frwuc/screenshot-uploader) 的版本变更。
+本文件记录 [s3-fileuploader](https://github.com/frwuc/s3-fileuploader)（原 ScreenshotUploader）的版本变更。
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
+
+## [v1.4.0] - 2026-11-08
+
+### 变更（项目更名）
+- **项目名 / 应用名 / 安装包名统一为 `s3-fileuploader`**（原 `ScreenshotUploader` / `S3-fileuploader`）
+- **包名与 applicationId 改为 `com.frwuc.s3fileuploader`**（原 `com.example.screenshotuploader`），
+  去掉占位 `com.example` 与遗留的 `screenshot` 字样
+  - ⚠️ 属于新的应用身份：与旧版不互通，升级需先卸载旧版，本地配置与上传记录不会迁移
+- 根项目名设为 `s3-fileuploader`（`settings.gradle` 的 `rootProject.name`）
+- APK 产物名统一为 `s3-fileuploader.apk`（Android 输出、CI 产物、Actions Artifacts 三处一致）
+- 关于页与 README 的仓库地址改为 `github.com/frwuc/s3-fileuploader` / `gitee.com/frwuc/s3-fileuploader`
+- 本地配置存储名改为 `s3_fileuploader_prefs`（新包名对应新数据目录，无迁移包袱）
+- 应用名改从 `@string/app_name` 读取，移除 Manifest 中硬编码 label 与 `tools:replace`
 
 ## [v1.3.1] - 2026-11-08
 

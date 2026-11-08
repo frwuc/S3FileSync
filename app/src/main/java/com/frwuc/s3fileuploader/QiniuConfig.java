@@ -1,4 +1,4 @@
-package com.example.screenshotuploader;
+package com.frwuc.s3fileuploader;
 
 public class QiniuConfig {
     public static final String ACCESS_KEY = "";

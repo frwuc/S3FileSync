@@ -1,4 +1,4 @@
-package com.example.screenshotuploader;
+package com.frwuc.s3fileuploader;
 
 /**
  * 项目/应用元信息集中管理。
@@ -6,15 +6,15 @@ package com.example.screenshotuploader;
 public final class AboutConfig {
     private AboutConfig() {}
 
-    public static final String APP_NAME = "S3-fileuploader";
-    public static final String APP_NAME_EN = "S3-fileuploader";
+    public static final String APP_NAME = "s3-fileuploader";
+    public static final String APP_NAME_EN = "s3-fileuploader";
 
     /** 联系邮箱 */
     public static final String EMAIL = "frwucc@163.com";
 
     /** 开源地址 */
-    public static final String GITHUB_URL = "https://github.com/frwuc/screenshot-uploader";
-    public static final String GITEE_URL = "https://gitee.com/frwuc/screenshot-uploader";
+    public static final String GITHUB_URL = "https://github.com/frwuc/s3-fileuploader";
+    public static final String GITEE_URL = "https://gitee.com/frwuc/s3-fileuploader";
 
     public static final String LICENSE = "MIT License";
 

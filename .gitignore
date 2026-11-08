@@ -27,3 +27,6 @@ out/
 
 # Build outputs
 app/build/
+
+# 本机构建用的镜像 init script（不入库）
+.gradle-mirror.init.gradle

@@ -1,4 +1,4 @@
-package com.example.screenshotuploader;
+package com.frwuc.s3fileuploader;
 
 import android.os.Bundle;
 

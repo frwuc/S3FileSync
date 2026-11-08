@@ -1,6 +1,6 @@
-# 截图定时上传 (ScreenshotUploader)
+# s3-fileuploader（截图定时上传）
 
-[![Build APK](https://github.com/frwuc/screenshot-uploader/actions/workflows/android-build.yml/badge.svg)](https://github.com/frwuc/screenshot-uploader/actions/workflows/android-build.yml)
+[![Build APK](https://github.com/frwuc/s3-fileuploader/actions/workflows/android-build.yml/badge.svg)](https://github.com/frwuc/s3-fileuploader/actions/workflows/android-build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 一款开源的 **Android 截图自动备份工具**。定时扫描手机里的截图，自动上传到你的**七牛云**对象存储，实现截图的自动云端备份。
@@ -45,20 +45,20 @@ App 通过 **AlarmManager** 在设定时间点唤醒前台服务，扫描配置�
 
 ### 方式一：下载现成 APK
 
-1. 进入本仓库的 **[Actions](https://github.com/frwuc/screenshot-uploader/actions)** 页面
+1. 进入本仓库的 **[Actions](https://github.com/frwuc/s3-fileuploader/actions)** 页面
 2. 点开最新一次成功的构建（绿色 ✅）
-3. 在页面底部 **Artifacts** 区域下载 **`app-debug-apk`**
-4. 解压 zip，得到 `app-debug.apk`，传到手机安装
+3. 在页面底部 **Artifacts** 区域下载 **`s3-fileuploader`**
+4. 解压 zip，得到 `s3-fileuploader.apk`，传到手机安装
 
 > ⚠️ Debug 包用于个人测试；如需正式发布请自行配置签名出 Release 包。
 
 ### 方式二：自己构建
 
 ```bash
-git clone https://github.com/frwuc/screenshot-uploader.git
-cd screenshot-uploader
-./gradlew assembleDebug
-# 产物：app/build/outputs/apk/debug/app-debug.apk
+git clone https://github.com/frwuc/s3-fileuploader.git
+cd s3-fileuploader
+gradle assembleDebug
+# 产物：app/build/outputs/apk/debug/s3-fileuploader.apk
 ```
 
 也可直接用 GitHub Actions 在线构建（推送代码即自动触发）。
@@ -112,7 +112,7 @@ cd screenshot-uploader
 ### 项目结构
 
 ```
-app/src/main/java/com/example/screenshotuploader/
+app/src/main/java/com/frwuc/s3fileuploader/
 ├── MainActivity.java      # 主界面，配置与操作入口
 ├── UploadService.java     # 前台服务，执行扫描与上传
 ├── UploadScheduler.java   # 定时任务调度（AlarmManager）

@@ -1,4 +1,4 @@
-package com.example.screenshotuploader;
+package com.frwuc.s3fileuploader;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -6,7 +6,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class Prefs {
-    private static final String NAME = "screenshot_uploader_prefs";
+    private static final String NAME = "s3_fileuploader_prefs";
 
     public static final String KEY_ACCESS_KEY = "access_key";
     public static final String KEY_SECRET_KEY = "secret_key";

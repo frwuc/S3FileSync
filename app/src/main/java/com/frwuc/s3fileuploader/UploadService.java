@@ -1,4 +1,4 @@
-package com.example.screenshotuploader;
+package com.frwuc.s3fileuploader;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -26,7 +26,7 @@ import java.util.Set;
 
 public class UploadService extends Service {
 
-    public static final String ACTION_UPLOAD = "com.example.screenshotuploader.ACTION_UPLOAD";
+    public static final String ACTION_UPLOAD = "com.frwuc.s3fileuploader.ACTION_UPLOAD";
     private static final String TAG = "UploadService";
     private static final int NOTIFICATION_ID = 1001;
     private static final String CHANNEL_ID = "uploader_channel";
@@ -174,7 +174,7 @@ public class UploadService extends Service {
     private Notification createNotification(String content) {
         createChannel();
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("截图定时上传")
+                .setContentTitle(getString(R.string.app_name))
                 .setContentText(content)
                 .setSmallIcon(android.R.drawable.ic_menu_gallery)
                 .setOngoing(true)

@@ -3,21 +3,23 @@ plugins {
 }
 
 android {
-    namespace 'com.example.screenshotuploader'
+    namespace 'com.frwuc.s3fileuploader'
     compileSdk 34
+    // AGP 8.1 默认要 33.0.1，统一跟 compileSdk 对齐到 34
+    buildToolsVersion '34.0.0'
 
     defaultConfig {
-        applicationId "com.example.screenshotuploader"
+        applicationId "com.frwuc.s3fileuploader"
         minSdk 21
         targetSdk 29
-        versionCode 5
-        versionName "1.3.1"
+        versionCode 6
+        versionName "1.4.0"
     }
 
     // 统一 APK 输出文件名为项目名，便于在 Release 中分发
     applicationVariants.all { variant ->
         variant.outputs.all { output ->
-            outputFileName = "S3-fileuploader.apk"
+            outputFileName = "s3-fileuploader.apk"
         }
     }
 
