@@ -1,6 +1,8 @@
 package com.frwuc.s3fileuploader;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -19,6 +21,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.SwitchCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import java.io.File;
@@ -33,11 +36,12 @@ import java.util.Set;
 public class SettingsFragment extends Fragment {
 
     private static final int REQ_BATTERY = 1002;
+    private static final int REQ_STORAGE_FOR_BROWSE = 1003;
 
     private EditText etAccessKey, etSecretKey, etBucket, etDomain, etQiniuDir, etLocalDir;
     private Spinner spinnerLocalDir;
     private LinearLayout timesContainer;
-    private Button btnAddTime, btnSave, btnBattery;
+    private Button btnAddTime, btnSave, btnBattery, btnBrowseLocal, btnBrowseCloud;
     private SwitchCompat switchAutoSync;
 
     /** 常用本地文件目录，供下拉快速选择 */
@@ -70,6 +74,8 @@ public class SettingsFragment extends Fragment {
         btnAddTime = view.findViewById(R.id.btn_add_time);
         btnSave = view.findViewById(R.id.btn_save);
         btnBattery = view.findViewById(R.id.btn_battery);
+        btnBrowseLocal = view.findViewById(R.id.btn_browse_local);
+        btnBrowseCloud = view.findViewById(R.id.btn_browse_cloud);
         switchAutoSync = view.findViewById(R.id.switch_auto_sync);
 
         loadConfig();
@@ -88,6 +94,65 @@ public class SettingsFragment extends Fragment {
         btnAddTime.setOnClickListener(v -> addTimeRow(""));
         btnSave.setOnClickListener(v -> saveConfig());
         btnBattery.setOnClickListener(v -> openBatteryOptimization());
+        btnBrowseLocal.setOnClickListener(v -> browseLocalDir());
+        btnBrowseCloud.setOnClickListener(v -> browseCloudDir());
+    }
+
+    // ------------------------------------------------------------ 目录浏览
+
+    /**
+     * 打开本地文件夹浏览器选择同步目录；无存储权限时先申请，授权后自动继续打开。
+     */
+    private void browseLocalDir() {
+        if (ContextCompat.checkSelfPermission(requireContext(),
+                Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                    REQ_STORAGE_FOR_BROWSE);
+            return;
+        }
+        String start = etLocalDir.getText().toString().trim();
+        BrowserDialog.showLocal(requireContext(), start, true, path -> {
+            etLocalDir.setText(path);
+            Toast.makeText(requireContext(),
+                    "已选择本地文件夹：" + path + "\n记得点下方「保存配置」",
+                    Toast.LENGTH_LONG).show();
+        });
+    }
+
+    /**
+     * 打开云端目录浏览器：用输入框里当前的 AK/SK/Bucket 现场列举，不要求先保存配置。
+     */
+    private void browseCloudDir() {
+        String ak = etAccessKey.getText().toString().trim();
+        String sk = etSecretKey.getText().toString().trim();
+        String bucket = etBucket.getText().toString().trim();
+        if (TextUtils.isEmpty(ak) || TextUtils.isEmpty(sk) || TextUtils.isEmpty(bucket)) {
+            Toast.makeText(requireContext(),
+                    "请先填写 AK / SK / Bucket，再浏览云端目录", Toast.LENGTH_LONG).show();
+            return;
+        }
+        BrowserDialog.showCloud(requireContext(), ak, sk, bucket,
+                etQiniuDir.getText().toString().trim(), true, prefix -> {
+                    etQiniuDir.setText(prefix);
+                    Toast.makeText(requireContext(),
+                            "已选择云端目录：" + (prefix.isEmpty() ? "（bucket 根目录）" : prefix)
+                                    + "\n记得点下方「保存配置」",
+                            Toast.LENGTH_LONG).show();
+                });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQ_STORAGE_FOR_BROWSE) return;
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            browseLocalDir();
+        } else {
+            Toast.makeText(requireContext(),
+                    "未授予存储权限，无法浏览本地文件夹（仍可手动输入路径）",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     private void loadConfig() {
@@ -164,7 +229,9 @@ public class SettingsFragment extends Fragment {
         String qiniuDir = etQiniuDir.getText().toString().trim();
         String localDir = etLocalDir.getText().toString().trim();
 
+        // 云端目录统一存「无首尾斜杠」的形式，上传时再拼 "/"，避免出现 a//b 这样的 key
         while (qiniuDir.startsWith("/")) qiniuDir = qiniuDir.substring(1);
+        while (qiniuDir.endsWith("/")) qiniuDir = qiniuDir.substring(0, qiniuDir.length() - 1);
 
         Prefs.putString(requireContext(), Prefs.KEY_ACCESS_KEY, etAccessKey.getText().toString().trim());
         Prefs.putString(requireContext(), Prefs.KEY_SECRET_KEY, etSecretKey.getText().toString().trim());

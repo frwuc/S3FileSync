@@ -54,6 +54,45 @@ public final class QiniuToken {
         return accessKey + ":" + urlSafeBase64(sign) + ":" + encodedPolicy;
     }
 
+    /**
+     * 生成七牛「管理凭证」（QBox token），用于调用 rsf.qbox.me 等管理类接口
+     * （本应用用来列举 bucket 下的目录与文件，见 {@link QiniuBucketApi}）。
+     *
+     * <pre>
+     * signingStr = path [ "?" query ] "\n"
+     * sign       = HmacSHA1(secretKey, signingStr)
+     * token      = AK ":" urlSafeBase64(sign) ":" urlSafeBase64(AK ":" urlSafeBase64(sign))
+     * </pre>
+     *
+     * 与上传凭证不同，管理凭证把「被签名的原文」也算进了请求，所以 query 必须与真实请求
+     * 逐字节一致（参数按名称字典序、值做 URL 编码）。
+     *
+     * 算法参考：https://developer.qiniu.com/kodo/1201/access-token
+     *
+     * @param path  接口路径，如 {@code /list}
+     * @param query 请求参数串（不含 "?"），无参数时传 null 或 ""
+     * @return 管理凭证字符串（不含 "QBox " 前缀）
+     */
+    public static String managementToken(String accessKey, String secretKey,
+                                         String path, String query) {
+        String signingStr = signingString(path, query);
+        byte[] sign = hmacSha1(secretKey.getBytes(StandardCharsets.UTF_8),
+                signingStr.getBytes(StandardCharsets.UTF_8));
+        String encodedSign = urlSafeBase64(sign);
+        String encodedToken = urlSafeBase64(
+                (accessKey + ":" + encodedSign).getBytes(StandardCharsets.UTF_8));
+        return accessKey + ":" + encodedSign + ":" + encodedToken;
+    }
+
+    /** 待签名原文：path [+ "?" + query] + "\n"。抽成独立方法便于单测校验格式。 */
+    static String signingString(String path, String query) {
+        StringBuilder sb = new StringBuilder(path == null ? "" : path);
+        if (query != null && !query.isEmpty()) {
+            sb.append('?').append(query);
+        }
+        return sb.append('\n').toString();
+    }
+
     private static byte[] hmacSha1(byte[] key, byte[] data) {
         try {
             Mac mac = Mac.getInstance(HMAC_SHA1);

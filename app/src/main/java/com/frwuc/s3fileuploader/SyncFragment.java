@@ -30,6 +30,10 @@ public class SyncFragment extends Fragment {
 
     private TextView tvBucket, tvDirs, tvCloud, tvTimes, tvStatus, tvHint;
 
+    /** 权限申请回来之后要继续执行的动作 */
+    private boolean pendingBrowseLocal = false;
+    private boolean pendingSync = false;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
@@ -48,8 +52,12 @@ public class SyncFragment extends Fragment {
         tvStatus = view.findViewById(R.id.tv_sync_status);
         tvHint = view.findViewById(R.id.tv_sync_hint);
         Button btnSync = view.findViewById(R.id.btn_sync_now);
+        Button btnBrowseLocal = view.findViewById(R.id.btn_browse_local);
+        Button btnBrowseCloud = view.findViewById(R.id.btn_browse_cloud);
 
         btnSync.setOnClickListener(v -> doSync());
+        btnBrowseLocal.setOnClickListener(v -> browseLocal());
+        btnBrowseCloud.setOnClickListener(v -> browseCloud());
 
         refreshSummary();
     }
@@ -90,6 +98,7 @@ public class SyncFragment extends Fragment {
 
     private void doSync() {
         if (!hasPermissions()) {
+            pendingSync = true;
             requestPermissions();
             return;
         }
@@ -127,5 +136,67 @@ public class SyncFragment extends Fragment {
         ActivityCompat.requestPermissions(requireActivity(),
                 new String[]{Manifest.permission.READ_EXTERNAL_STORAGE,
                         Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQ_PERMISSIONS);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQ_PERMISSIONS) return;
+
+        boolean granted = grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+        if (!granted) {
+            pendingBrowseLocal = false;
+            pendingSync = false;
+            Toast.makeText(requireContext(), "需要存储权限才能读取本地文件夹",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (pendingBrowseLocal) {
+            pendingBrowseLocal = false;
+            browseLocal();
+        } else if (pendingSync) {
+            pendingSync = false;
+            doSync();
+        }
+    }
+
+    // ------------------------------------------------------------ 浏览两端内容
+
+    /** 浏览本地同步文件夹内容；顺手支持换一个目录（选中即保存）。 */
+    private void browseLocal() {
+        if (!hasPermissions()) {
+            pendingBrowseLocal = true;
+            requestPermissions();
+            return;
+        }
+        String current = Prefs.getString(requireContext(), Prefs.KEY_LOCAL_DIR, "");
+        BrowserDialog.showLocal(requireContext(), current, true, path -> {
+            Prefs.putString(requireContext(), Prefs.KEY_LOCAL_DIR, path);
+            refreshSummary();
+            Toast.makeText(requireContext(), "已切换本地同步目录：" + path,
+                    Toast.LENGTH_LONG).show();
+        });
+    }
+
+    /** 浏览云端目录内容；同样可以逐级进入并选中作为上传目录。 */
+    private void browseCloud() {
+        String ak = Prefs.getString(requireContext(), Prefs.KEY_ACCESS_KEY, QiniuConfig.ACCESS_KEY);
+        String sk = Prefs.getString(requireContext(), Prefs.KEY_SECRET_KEY, QiniuConfig.SECRET_KEY);
+        String bucket = Prefs.getString(requireContext(), Prefs.KEY_BUCKET, QiniuConfig.BUCKET);
+        if (TextUtils.isEmpty(ak) || TextUtils.isEmpty(sk) || TextUtils.isEmpty(bucket)) {
+            Toast.makeText(requireContext(), "请先到「设置」填写七牛云 AK / SK / Bucket",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        String current = Prefs.getString(requireContext(), Prefs.KEY_QINIU_DIR, "");
+        BrowserDialog.showCloud(requireContext(), ak, sk, bucket, current, true, prefix -> {
+            Prefs.putString(requireContext(), Prefs.KEY_QINIU_DIR, prefix);
+            refreshSummary();
+            Toast.makeText(requireContext(),
+                    "已切换云端目录：" + (prefix.isEmpty() ? "（bucket 根目录）" : prefix),
+                    Toast.LENGTH_LONG).show();
+        });
     }
 }

@@ -120,6 +120,42 @@
                 android:gravity="center"
                 android:layout_marginTop="8dp"/>
 
+            <!-- 浏览两端内容（支持名称 / 时间排序） -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="14dp">
+
+                <Button
+                    android:id="@+id/btn_browse_local"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="📁 本地文件夹"
+                    android:backgroundTint="#E8EAF6"
+                    android:textColor="#3F51B5"/>
+
+                <Button
+                    android:id="@+id/btn_browse_cloud"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:text="☁️ 云端目录"
+                    android:backgroundTint="#E8EAF6"
+                    android:textColor="#3F51B5"/>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="点上面的按钮可浏览同步文件夹里的内容，列表支持按名称 / 时间排序"
+                android:textSize="12sp"
+                android:textColor="#999999"
+                android:gravity="center"
+                android:layout_marginTop="6dp"/>
+
             <!-- 运行状态 -->
             <LinearLayout
                 android:layout_width="match_parent"

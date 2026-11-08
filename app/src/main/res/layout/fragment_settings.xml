@@ -104,6 +104,15 @@
                     android:hint="云端目录（如 daka_files）"
                     android:inputType="text"/>
 
+                <Button
+                    android:id="@+id/btn_browse_cloud"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📂 浏览云端目录并选择"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="#E8EAF6"
+                    android:textColor="#3F51B5"/>
+
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -171,10 +180,19 @@
                     android:inputType="text"
                     android:layout_marginTop="8dp"/>
 
+                <Button
+                    android:id="@+id/btn_browse_local"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📂 浏览本地文件夹并选择"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="#E8EAF6"
+                    android:textColor="#3F51B5"/>
+
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="📌 从下拉选常用目录，或选“自定义路径”后手填 /sdcard/ 开头的绝对路径。"
+                    android:text="📌 从下拉选常用目录、点「浏览」逐级选择，或选“自定义路径”后手填 /sdcard/ 开头的绝对路径。"
                     android:textSize="11sp"
                     android:textColor="#2196F3"
                     android:layout_marginTop="6dp"/>

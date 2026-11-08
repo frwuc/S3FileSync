@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 文件夹浏览对话框：本地文件夹与七牛云端目录共用一套界面 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="4dp">
+
+    <!-- 当前路径 + 上级 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tv_browser_path"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="/sdcard"
+            android:textSize="12sp"
+            android:textColor="#1976D2"
+            android:maxLines="2"
+            android:ellipsize="middle"/>
+
+        <TextView
+            android:id="@+id/btn_browser_up"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="10dp"
+            android:paddingEnd="4dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:text="⬆ 上级"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#1976D2"/>
+    </LinearLayout>
+
+    <!-- 排序方式 + 条目计数 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="6dp">
+
+        <TextView
+            android:id="@+id/btn_sort_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:text="名称 ↑"
+            android:textSize="12sp"
+            android:textColor="#1976D2"
+            android:textStyle="bold"
+            android:background="@drawable/bg_sort_chip"/>
+
+        <TextView
+            android:id="@+id/btn_sort_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:text="时间 ↓"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:background="@drawable/bg_sort_chip"/>
+
+        <TextView
+            android:id="@+id/tv_browser_count"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="end"
+            android:text="共 0 项"
+            android:textSize="11sp"
+            android:textColor="#999999"/>
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="360dp"
+        android:layout_marginTop="8dp">
+
+        <ListView
+            android:id="@+id/lv_browser"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:divider="#EEEEEE"
+            android:dividerHeight="1dp"
+            android:scrollbars="vertical"/>
+
+        <ProgressBar
+            android:id="@+id/pb_browser_loading"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/tv_browser_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:padding="24dp"
+            android:text="此文件夹内没有内容"
+            android:textSize="13sp"
+            android:textColor="#999999"
+            android:visibility="gone"/>
+    </FrameLayout>
+
+</LinearLayout>

@@ -14,8 +14,9 @@
 
 - ⏰ **定时自动上传**：可设置多个时间点（如 10:00、19:00），到点自动扫描并上传新增文件
 - ☁️ **七牛云备份**：文件上传到自己的七牛云 bucket，安全可控、容量充足
-- 📁 **本地目录可选**：支持下拉选择常用文件目录，也可手动输入任意自定义路径
-- 🗂️ **云端目录可选**：自由指定上传到七牛 bucket 下的哪个目录（key 前缀）
+- 📁 **本地目录可选**：内置文件夹浏览器，逐级进入 / 返回上级挑目录，也可下拉选常用目录或手动输入路径
+- 🗂️ **云端目录可选**：内置云端目录浏览器，实时列举 bucket 下的文件夹逐级选择，无需手打 key 前缀
+- 👀 **两端内容可浏览**：本地文件夹与云端目录内的文件都能直接查看（大小 + 修改时间），支持名称 / 时间升降序排序
 - 🔁 **增量上传**：已上传过的文件自动跳过，不重复上传、不浪费流量
 - 🔐 **本地签发凭证**：内置上传凭证本地签发算法，无需自建服务器
 - 🌐 **开机自启**：支持开机自动恢复定时任务，重启不丢配置
@@ -47,7 +48,7 @@ App 通过 **AlarmManager** 在设定时间点唤醒前台服务，扫描配置�
 
 | 页签 | 标题 | 内容 |
 |------|------|------|
-| 同步任务 | ⚡ 同步任务 | 当前配置摘要（Bucket / 本地目录 / 云端目录 / 定时时间）+ 立即同步 + 运行状态 |
+| 同步任务 | ⚡ 同步任务 | 当前配置摘要（Bucket / 本地目录 / 云端目录 / 定时时间）+ 立即同步 + 运行状态 + 本地 / 云端内容浏览 |
 | 执行记录 | 🗂 执行记录 | **每次任务**的触发时间与结果汇总（成功 / 失败 / 跳过），顶部带累计统计卡片 |
 | 日志记录 | 📄 日志记录 | **每个文件**的上传明细，含云端 key 与访问地址，成功 / 失败用颜色区分 |
 | 设置 | 设置 | 七牛云账号、本地文件目录、定时时间三个可折叠分区 + 打开 App 自动同步开关 + 电池白名单 |
@@ -61,8 +62,8 @@ App 通过 **AlarmManager** 在设定时间点唤醒前台服务，扫描配置�
 
 ### 方式一：下载现成 APK
 
-- **GitHub Releases**：<https://github.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader-1.5.0.apk`）
-- **Gitee Releases（国内推荐）**：<https://gitee.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader-1.5.0.apk`，无需登录）
+- **GitHub Releases**：<https://github.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader-1.6.0.apk`）
+- **Gitee Releases（国内推荐）**：<https://gitee.com/frwuc/s3-fileuploader/releases>（附件 `s3-fileuploader-1.6.0.apk`，无需登录）
 - 也可从 **[Actions](https://github.com/frwuc/s3-fileuploader/actions)** 最新一次成功构建（绿色 ✅）的 **Artifacts** 里下载 `s3-fileuploader` 压缩包，解压即得 APK
 
 > ⚠️ 附件为 debug 签名包，用于个人测试；如需正式发布请自行配置签名出 Release 包。
@@ -98,13 +99,15 @@ gradle assembleDebug
 | **SecretKey (SK)** | 七牛云账号的 SecretKey |
 | **Bucket 空间名称** | 七牛云对象存储的空间名，如 `my-bucket` |
 | **上传域名** | 一般填 `https://z0.qbox.me`（华东），其它区域见七牛文档 |
-| **云端目录** | 上传到 bucket 下的哪个目录，如 `daka_files`；留空则放根目录 |
+| **云端目录** | 上传到 bucket 下的哪个目录，如 `daka_files`；留空则放根目录。点 **「📂 浏览云端目录并选择」** 可实时列出 bucket 内的文件夹，逐级点进去后一键选中 |
 
 > AK/SK 获取：登录 [七牛云控制台](https://portal.qiniu.com/) → 个人中心 → 密钥管理。
 > Bucket 创建：对象存储 Kodo → 新建空间。
+> 云端浏览走七牛 `rsf.qbox.me/list` 接口，用填写的 AK/SK 本地签发管理凭证，只读、不产生费用。
 
 ### ② 本地文件目录
 
+- 点 **「📂 浏览本地文件夹并选择」** 打开文件夹浏览器：逐级进入子文件夹、`⬆ 上级` 返回、底部一键「选择此文件夹」
 - **下拉选择**常用目录：`DCIM/Screenshots`、`Pictures/Screenshots`、`DCIM/Camera`、`Pictures`
 - 或选 **"自定义路径..."** 手动输入任意绝对路径（如 `/sdcard/DCIM/Camera`）
 
@@ -125,6 +128,17 @@ gradle assembleDebug
 - 开关切换后立即保存（不需要点「保存配置」），下次打开 App 生效。
 
 > 💡 **vivo / OPPO / 小米** 等机型请务必点 **"设置电池优化白名单"**，否则后台定时任务容易被系统杀掉。
+
+### ⑤ 浏览同步文件夹内容
+
+配置页与「同步任务」页都提供浏览入口，打开后是同一套浏览器：
+
+- **本地文件夹**：列出当前文件夹下的子文件夹与文件，显示文件大小与修改时间；点文件夹进入，`⬆ 上级` 返回
+- **云端目录**：通过七牛 `rsf.qbox.me/list` 实时列举 bucket 内该目录下的子目录与对象（含大小与上传时间）
+- **排序**：顶部 `名称` / `时间` 两个按钮，点一下切换升 / 降序（`名称 ↑` `名称 ↓` `时间 ↑` `时间 ↓`）；
+  文件夹始终排在文件前面，避免翻找时上下跳
+- 底部 **「✓ 选择此文件夹」** 会把当前目录写回配置（本地取绝对路径，云端取 key 前缀、根目录为空），
+  在同步页使用时立即生效，在设置页使用时还需点一次「保存配置」
 
 ---
 
@@ -155,8 +169,12 @@ app/src/main/java/com/frwuc/s3fileuploader/
 ├── AlarmReceiver.java     # 定时唤醒接收器
 ├── BootReceiver.java      # 开机自启，恢复定时任务
 ├── QiniuConfig.java       # 默认配置常量
-├── QiniuToken.java        # 七牛上传凭证本地签发
+├── QiniuToken.java        # 七牛上传凭证 / 管理凭证本地签发
 ├── QiniuUploader.java     # 七牛上传封装
+├── QiniuBucketApi.java    # 七牛列举接口（浏览 bucket 目录与文件）
+├── BrowserDialog.java     # 文件夹浏览 / 选择对话框（本地与云端共用，含排序）
+├── BrowseEntry.java       # 浏览列表条目模型
+├── BrowseSort.java        # 浏览排序规则（名称 / 时间，升降序）
 ├── AutoSync.java          # 「打开 App 时自动同步」开关读取与触发判定
 └── Prefs.java             # 配置持久化
 ```
