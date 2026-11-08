@@ -93,6 +93,54 @@ public final class QiniuToken {
         return sb.append('\n').toString();
     }
 
+    /**
+     * 生成七牛「Qiniu」管理凭证（QiniuMacAuth，现行官方 SDK 对管理接口使用的方案，
+     * 部分较新的账号只接受这一种签名，旧版 {@link #managementToken}（QBox）会报 401 bad token）。
+     *
+     * <p>对应官方 Python SDK 的 {@code QiniuMacAuth.token_of_request}，签名原文为
+     * （各段之间存在则拼接，最后固定补两个换行）：
+     *
+     * <pre>
+     * &lt;METHOD&gt; &lt;path&gt;[?&lt;query&gt;]
+     * Host: &lt;host&gt;
+     * Content-Type: &lt;contentType&gt;      （请求带该头时才签）
+     * X-Qiniu-Date: &lt;xQiniuDate&gt;       （请求带该头时才签，多个 X-Qiniu-* 头按名称排序）
+     * （空行）
+     * （空行）
+     * </pre>
+     *
+     * 注意与 QBox 凭证不同：token 只有两段（ak:sign），Header 形如 {@code Authorization: Qiniu ak:sign}。
+     *
+     * @param method      HTTP 方法，如 {@code GET}
+     * @param path        接口路径，如 {@code /list}
+     * @param query       请求参数串（不含 "?"），无参数时传 null 或 ""
+     * @param host        请求的 Host（不含端口），如 {@code rsf.qbox.me}
+     * @param contentType 请求的 Content-Type；请求不带该头时传 null 或 ""
+     * @param xQiniuDate  请求头 X-Qiniu-Date 的值（UTC 时间，格式 yyyyMMdd'T'HHmmss'Z'）；不带时传 null 或 ""
+     * @return 「Qiniu」管理凭证字符串（不含 "Qiniu " 前缀）
+     */
+    public static String qiniuMacToken(String accessKey, String secretKey, String method,
+                                       String path, String query, String host,
+                                       String contentType, String xQiniuDate) {
+        StringBuilder data = new StringBuilder(method == null ? "" : method)
+                .append(' ').append(path == null ? "" : path);
+        if (query != null && !query.isEmpty()) {
+            data.append('?').append(query);
+        }
+        data.append('\n').append("Host: ").append(host == null ? "" : host);
+        if (contentType != null && !contentType.isEmpty()) {
+            data.append('\n').append("Content-Type: ").append(contentType);
+        }
+        if (xQiniuDate != null && !xQiniuDate.isEmpty()) {
+            data.append('\n').append("X-Qiniu-Date: ").append(xQiniuDate);
+        }
+        data.append("\n\n");
+
+        byte[] sign = hmacSha1(secretKey.getBytes(StandardCharsets.UTF_8),
+                data.toString().getBytes(StandardCharsets.UTF_8));
+        return accessKey + ":" + urlSafeBase64(sign);
+    }
+
     private static byte[] hmacSha1(byte[] key, byte[] data) {
         try {
             Mac mac = Mac.getInstance(HMAC_SHA1);

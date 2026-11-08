@@ -9,10 +9,16 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 七牛 Kodo 空间「列举」接口封装，用于在 App 内浏览 bucket 下的目录与文件。
@@ -27,15 +33,26 @@ import java.util.List;
  * {@code commonPrefixes}（如 {@code daka_files/2024/}），把「直接子文件」放进
  * {@code items}；不带 delimiter 会递归返回所有层级的 key，页面展示会乱，所以必须带。
  *
- * <p>该接口需要管理凭证（QBox token），用 AK/SK 本地签发，见
- * {@link QiniuToken#managementToken}。所有方法都是同步阻塞的，调用方需放在后台线程。
+ * <p>该接口需要管理凭证。这里做两层处理：
+ * <ul>
+ *   <li>签名用「Qiniu」方案（{@link QiniuToken#qiniuMacToken}，现行官方 SDK 的方案，
+ *       部分较新的账号只认这一种）；收到 401 时自动回退旧版「QBox」方案
+ *       （{@link QiniuToken#managementToken}）再试一次，兼容老账号；</li>
+ *   <li>请求主机先通过 UC 的 {@code /v4/query} 查出 bucket 所在区域的 rsf 域名，
+ *       避免写死 rsf.qbox.me（z0）后非华东空间的 bucket 列举失败。</li>
+ * </ul>
  *
+ * 所有方法都是同步阻塞的，调用方需放在后台线程。
  * 接口文档：https://developer.qiniu.com/kodo/1284/list
  */
 public final class QiniuBucketApi {
 
-    private static final String LIST_URL = "https://rsf.qbox.me/list";
     private static final String LIST_PATH = "/list";
+    /** 兜底 rsf 主机（华东 z0） */
+    private static final String DEFAULT_RSF_HOST = "rsf.qbox.me";
+    /** UC 区域查询（无需签名）：返回 bucket 所在区域的 rs/rsf 等域名 */
+    private static final String UC_QUERY_PATH = "/v4/query";
+    private static final String UC_QUERY_HOST = "uc.qbox.me";
 
     /** 单页条数，七牛上限 1000 */
     private static final int PAGE_LIMIT = 1000;
@@ -44,6 +61,12 @@ public final class QiniuBucketApi {
 
     private static final int CONNECT_TIMEOUT_MS = 10000;
     private static final int READ_TIMEOUT_MS = 20000;
+
+    /** GET /list 用的 Content-Type：与官方 SDK 一致，且参与「Qiniu」签名，改了会导致 401 */
+    private static final String REQUEST_CONTENT_TYPE = "application/x-www-form-urlencoded";
+
+    /** rsf 主机缓存：key = ak@bucket。区域信息带 ttl，进程内缓存即可 */
+    private static final Map<String, String> RSF_HOST_CACHE = new ConcurrentHashMap<>();
 
     private QiniuBucketApi() {
     }
@@ -63,13 +86,14 @@ public final class QiniuBucketApi {
             throw new IOException("请先填写 Bucket 空间名称");
         }
 
+        String host = resolveRsfHost(accessKey, bucket);
         String dirPrefix = normalizePrefix(prefix);
         List<BrowseEntry> result = new ArrayList<>();
         String marker = "";
 
         for (int page = 0; page < MAX_PAGES; page++) {
             String query = buildQuery(bucket, dirPrefix, "/", marker);
-            JSONObject json = request(query, accessKey, secretKey);
+            JSONObject json = request(host, query, accessKey, secretKey);
 
             // 子目录：commonPrefixes 里是完整前缀，如 "daka_files/2024/"
             JSONArray dirs = json.optJSONArray("commonPrefixes");
@@ -108,6 +132,132 @@ public final class QiniuBucketApi {
         return result;
     }
 
+    // ---------------------------------------------------------------- 区域解析
+
+    /**
+     * 查 bucket 所在区域的 rsf 主机：GET https://uc.qbox.me/v4/query?ak=..&amp;bucket=..
+     * （无需签名）。查询失败时回退华东 rsf.qbox.me。
+     */
+    static String resolveRsfHost(String accessKey, String bucket) {
+        String cacheKey = accessKey + "@" + bucket;
+        String cached = RSF_HOST_CACHE.get(cacheKey);
+        if (cached != null) return cached;
+
+        try {
+            String query = "ak=" + encode(accessKey) + "&bucket=" + encode(bucket);
+            HttpURLConnection conn = openGet(UC_QUERY_HOST, UC_QUERY_PATH, query, null, null);
+            int code = conn.getResponseCode();
+            String body = readAll(code == HttpURLConnection.HTTP_OK
+                    ? conn.getInputStream() : conn.getErrorStream());
+            conn.disconnect();
+            if (code == HttpURLConnection.HTTP_OK) {
+                JSONObject json = new JSONObject(body);
+                JSONArray hosts = json.optJSONArray("hosts");
+                if (hosts != null && hosts.length() > 0) {
+                    JSONObject rsf = hosts.optJSONObject(0).optJSONObject("rsf");
+                    if (rsf != null) {
+                        JSONArray domains = rsf.optJSONArray("domains");
+                        if (domains != null && domains.length() > 0) {
+                            String host = domains.optString(0, "");
+                            if (!host.isEmpty()) {
+                                RSF_HOST_CACHE.put(cacheKey, host);
+                                return host;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+            // 查不到区域就用默认主机，不影响主流程
+        }
+        return DEFAULT_RSF_HOST;
+    }
+
+    // ---------------------------------------------------------------- 请求与签名
+
+    /** 简单响应体 */
+    private static final class Response {
+        final int code;
+        final String body;
+
+        Response(int code, String body) {
+            this.code = code;
+            this.body = body;
+        }
+    }
+
+    private static JSONObject request(String host, String query, String accessKey, String secretKey)
+            throws IOException {
+        String xQiniuDate = utcTimestamp();
+
+        // 1) 新版「Qiniu」签名：现行官方 SDK 的方案，较新的账号只接受这一种
+        String qiniuToken = QiniuToken.qiniuMacToken(accessKey, secretKey, "GET",
+                LIST_PATH, query, host, REQUEST_CONTENT_TYPE, xQiniuDate);
+        Response resp = doRequest(host, query, "Qiniu " + qiniuToken, xQiniuDate);
+        if (resp.code == HttpURLConnection.HTTP_OK) {
+            return parseBody(resp.body);
+        }
+        if (resp.code != 401) {
+            throw new IOException("列举云端目录失败（HTTP " + resp.code + "）："
+                    + explain(resp.code, resp.body));
+        }
+
+        // 2) 401 时回退旧版「QBox」签名再试一次，兼容老账号
+        String qboxToken = QiniuToken.managementToken(accessKey, secretKey, LIST_PATH, query);
+        Response retry = doRequest(host, query, "QBox " + qboxToken, null);
+        if (retry.code == HttpURLConnection.HTTP_OK) {
+            return parseBody(retry.body);
+        }
+        throw new IOException("列举云端目录失败（HTTP " + retry.code + "，新旧两种签名均被拒绝）："
+                + explain(retry.code, retry.body));
+    }
+
+    private static Response doRequest(String host, String query, String authorization,
+                                      String xQiniuDate) throws IOException {
+        HttpURLConnection conn = null;
+        try {
+            conn = openGet(host, LIST_PATH, query, authorization, xQiniuDate);
+            int code = conn.getResponseCode();
+            String body = readAll(code == HttpURLConnection.HTTP_OK
+                    ? conn.getInputStream() : conn.getErrorStream());
+            return new Response(code, body);
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private static HttpURLConnection openGet(String host, String path, String query,
+                                             String authorization, String xQiniuDate)
+            throws IOException {
+        URL url = new URL("https://" + host + path + (query.isEmpty() ? "" : "?" + query));
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+        conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        conn.setReadTimeout(READ_TIMEOUT_MS);
+        if (authorization != null) {
+            conn.setRequestProperty("Authorization", authorization);
+        }
+        if (xQiniuDate != null) {
+            conn.setRequestProperty("X-Qiniu-Date", xQiniuDate);
+        }
+        return conn;
+    }
+
+    /** X-Qiniu-Date 头：UTC 时间，格式 yyyyMMdd'T'HHmmss'Z'（与官方 SDK 一致）。 */
+    private static String utcTimestamp() {
+        SimpleDateFormat fmt = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'", Locale.US);
+        fmt.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return fmt.format(new Date());
+    }
+
+    private static JSONObject parseBody(String body) throws IOException {
+        try {
+            return new JSONObject(body);
+        } catch (Exception e) {
+            throw new IOException("云端返回内容无法解析：" + brief(body), e);
+        }
+    }
+
     /** 取翻页游标：新版返回 cursor，老版返回 marker，两者都兼容。 */
     private static String optNextMarker(JSONObject json) {
         String cursor = json.optString("cursor", "");
@@ -115,41 +265,11 @@ public final class QiniuBucketApi {
         return json.optString("marker", "");
     }
 
-    private static JSONObject request(String query, String accessKey, String secretKey)
-            throws IOException {
-        String token = QiniuToken.managementToken(accessKey, secretKey, LIST_PATH, query);
-        HttpURLConnection conn = null;
-        try {
-            URL url = new URL(LIST_URL + "?" + query);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
-            conn.setReadTimeout(READ_TIMEOUT_MS);
-            conn.setRequestProperty("Authorization", "QBox " + token);
-            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-
-            int code = conn.getResponseCode();
-            if (code == HttpURLConnection.HTTP_OK) {
-                String body = readAll(conn.getInputStream());
-                try {
-                    return new JSONObject(body);
-                } catch (Exception e) {
-                    throw new IOException("云端返回内容无法解析：" + brief(body), e);
-                }
-            }
-
-            String error = readAll(conn.getErrorStream());
-            throw new IOException("列举云端目录失败（HTTP " + code + "）：" + explain(code, error));
-        } finally {
-            if (conn != null) conn.disconnect();
-        }
-    }
-
     /** 把状态码翻成用户能看懂的提示（保留服务器返回的原始错误，便于定位）。 */
     private static String explain(int code, String body) {
         String detail = hintOf(body);
         if (code == 401) {
-            // "bad token" = AK 不存在或签名不匹配；把原文带出来，避免误判成网络问题
+            // 新旧两种签名都被拒绝，基本可以断定是密钥本身的问题
             return "管理凭证校验失败，请到七牛控制台「密钥管理」确认 AK / SK 是否有效"
                     + "（若最近更换过 SK，需到设置页重新粘贴并保存）。服务器返回：" + detail;
         }

@@ -55,6 +55,43 @@ public class QiniuTokenTest {
     }
 
     @Test
+    public void qiniuMacTokenMatchesOfficialAlgorithm() {
+        // Python 参考实现（官方 QiniuMacAuth 算法）计算结果：
+        //   data = "GET /list?bucket=mybucket&delimiter=%2F&limit=1000&prefix=abc%2Fdef%2F\n"
+        //        + "Host: rsf.qbox.me"
+        //        + "\nContent-Type: application/x-www-form-urlencoded"
+        //        + "\nX-Qiniu-Date: 20261108T120000Z"
+        //        + "\n\n"
+        //   token = ak + ":" + urlsafe_b64(HmacSHA1(sk, data))   （只有两段）
+        String token = QiniuToken.qiniuMacToken("test_access_key", "test_secret_key",
+                "GET", "/list", "bucket=mybucket&delimiter=%2F&limit=1000&prefix=abc%2Fdef%2F",
+                "rsf.qbox.me", "application/x-www-form-urlencoded", "20261108T120000Z");
+        assertEquals("test_access_key:3nMlCeWO5jistkTcnjH1U_L2kQw=", token);
+    }
+
+    @Test
+    public void qiniuMacTokenWithoutOptionalHeaders() {
+        // 不带 Content-Type / X-Qiniu-Date 时：data = "GET /list?bucket=b\nHost: rsf.qbox.me\n\n"
+        String token = QiniuToken.qiniuMacToken("ak", "sk", "GET", "/list", "bucket=b",
+                "rsf.qbox.me", null, null);
+        String sign = token.substring("ak:".length());
+        byte[] expected = hmacSha1("sk",
+                "GET /list?bucket=b\nHost: rsf.qbox.me\n\n");
+        assertEquals(Base64.getUrlEncoder().encodeToString(expected), sign);
+    }
+
+    private static byte[] hmacSha1(String secretKey, String data) {
+        try {
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA1");
+            mac.init(new javax.crypto.spec.SecretKeySpec(
+                    secretKey.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA1"));
+            return mac.doFinal(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Test
     public void uploadTokenStructure() {
         String token = QiniuToken.uploadToken("ak", "sk", "bucket", null, 3600);
         String[] parts = token.split(":");

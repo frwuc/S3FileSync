@@ -5,6 +5,20 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [v1.6.3] - 2026-11-08
+
+### 修复：云端目录浏览 401（bad token）
+- 根因：管理凭证此前用的是旧版「QBox」签名（`path?query\n`），而部分较新的七牛账号只接受
+  现行官方 SDK 的「Qiniu」签名（`QiniuMacAuth`：把请求方法、Host、Content-Type、X-Qiniu-Date
+  一起签名，Header 为 `Authorization: Qiniu ak:sign`），因此列举接口始终返回 401 bad token，
+  而上传凭证（另一种签名体系）不受影响——与现象「能同步、不能浏览」完全吻合
+- `QiniuToken` 新增 `qiniuMacToken`：按官方 `QiniuMacAuth.token_of_request` 算法实现，
+  并以官方算法的 Python 参考实现做逐字节单测校验
+- `QiniuBucketApi` 优先用「Qiniu」签名请求，收到 401 自动回退「QBox」签名再试一次，兼容老账号
+- 请求主机不再写死 `rsf.qbox.me`（华东 z0）：先经 UC `GET /v4/query?ak=..&bucket=..`
+  查出 bucket 所在区域的 rsf 域名（无需签名，进程内缓存），查询失败时回退默认主机，
+  非华东空间的列举也不再会打错区域
+
 ## [v1.6.2] - 2026-11-08
 
 ### 修复：云端目录浏览 401 时的错误提示不透明
