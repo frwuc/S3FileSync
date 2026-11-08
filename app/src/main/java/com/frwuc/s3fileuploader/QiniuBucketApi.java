@@ -145,14 +145,20 @@ public final class QiniuBucketApi {
         }
     }
 
-    /** 把状态码翻成用户能看懂的提示。 */
+    /** 把状态码翻成用户能看懂的提示（保留服务器返回的原始错误，便于定位）。 */
     private static String explain(int code, String body) {
-        if (code == 401) return "AK / SK 不正确或已失效";
-        if (code == 403) return "没有该空间的操作权限，请检查 Bucket 是否属于此账号";
-        if (code == 404) return "空间不存在：" + hintOf(body);
-        if (code == 400) return "请求参数有误：" + hintOf(body);
-        if (code >= 500) return "七牛服务暂时不可用，稍后再试";
-        return hintOf(body);
+        String detail = hintOf(body);
+        if (code == 401) {
+            // "bad token" = AK 不存在或签名不匹配；把原文带出来，避免误判成网络问题
+            return "管理凭证校验失败，请到七牛控制台「密钥管理」确认 AK / SK 是否有效"
+                    + "（若最近更换过 SK，需到设置页重新粘贴并保存）。服务器返回：" + detail;
+        }
+        if (code == 403) return "没有该空间的操作权限，请检查 Bucket 是否属于此账号。服务器返回：" + detail;
+        if (code == 404) return "空间不存在：" + detail;
+        if (code == 400) return "请求参数有误：" + detail;
+        if (code == 631) return "空间不存在（当前区域查不到该 Bucket）：" + detail;
+        if (code >= 500) return "七牛服务暂时不可用，稍后再试。服务器返回：" + detail;
+        return detail;
     }
 
     private static String hintOf(String body) {

@@ -108,6 +108,25 @@ public final class QiniuToken {
      * 注意必须用 android.util.Base64：java.util.Base64 需要 API 26+，本项目 minSdk 21。
      */
     private static String urlSafeBase64(byte[] data) {
-        return Base64.encodeToString(data, Base64.URL_SAFE | Base64.NO_WRAP);
+        return encoder.encode(data);
+    }
+
+    /** Base64 编码钩子：生产环境用 android.util.Base64，JVM 单测注入等价的 java 实现。 */
+    interface UrlSafeBase64Encoder {
+        String encode(byte[] data);
+    }
+
+    private static final UrlSafeBase64Encoder ANDROID_ENCODER = new UrlSafeBase64Encoder() {
+        @Override
+        public String encode(byte[] data) {
+            return Base64.encodeToString(data, Base64.URL_SAFE | Base64.NO_WRAP);
+        }
+    };
+
+    private static UrlSafeBase64Encoder encoder = ANDROID_ENCODER;
+
+    /** 仅供 JVM 单测注入与 android.util.Base64 逐字节等价的实现；传 null 恢复生产默认。 */
+    static void setUrlSafeBase64EncoderForTest(UrlSafeBase64Encoder e) {
+        encoder = e != null ? e : ANDROID_ENCODER;
     }
 }
