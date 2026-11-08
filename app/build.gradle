@@ -14,6 +14,18 @@ android {
         targetSdk 29
         versionCode 8
         versionName "1.6.0"
+
+        // 只打真机用得到的 ABI。七牛 SDK 会带进 conscrypt 的 native 库，
+        // x86 / x86_64 只对模拟器有意义，白白多出约 2MB。
+        // 需要用 x86 模拟器调试时：gradle assembleDebug -PwithX86=true
+        ndk {
+            abiFilters.addAll(project.hasProperty('withX86')
+                    ? ['arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64']
+                    : ['arm64-v8a', 'armeabi-v7a'])
+        }
+
+        // 只保留中英文资源，砍掉 appcompat / material 自带的几十种语言
+        resConfigs 'zh', 'en'
     }
 
     // 统一 APK 输出文件名为项目名，便于在 Release 中分发
@@ -25,13 +37,20 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            // 体积优化：代码压缩 + 资源收缩（debug 保持可断点调试，不启用）
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    packaging {
+        resources.excludes += ['META-INF/LICENSE*', 'META-INF/NOTICE*',
+                               'META-INF/DEPENDENCIES', 'META-INF/*.kotlin_module']
     }
 }
 
