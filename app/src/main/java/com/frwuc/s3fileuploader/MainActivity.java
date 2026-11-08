@@ -17,6 +17,8 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
  */
 public class MainActivity extends AppCompatActivity {
 
+    private static final String STATE_TAB = "state_current_tab";
+
     /** 当前展示的页签，首次进入前为 0。 */
     private int currentTabId = 0;
 
@@ -31,10 +33,21 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
-        // 默认打开「同步任务」页
         if (savedInstanceState == null) {
+            // 默认打开「同步任务」页
             bottomNav.setSelectedItemId(R.id.nav_sync);
+        } else {
+            // 重建（如旋转屏幕）：Fragment 由 FragmentManager 恢复，
+            // 这里只补回页签记录与标题，避免重复创建页面
+            currentTabId = savedInstanceState.getInt(STATE_TAB, R.id.nav_sync);
+            setTitle(titleOf(currentTabId));
         }
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(STATE_TAB, currentTabId);
     }
 
     /** 切换到指定页签：标题栏文字与页面内的头部标题保持一致。 */
