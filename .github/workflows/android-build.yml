@@ -73,7 +73,7 @@ jobs:
       - name: 构建 Debug APK
         run: gradle assembleDebug --stacktrace --no-daemon
 
-      # 产物带版本号，与 Gitee 发行版的命名保持一致（s3-fileuploader-1.5.0.apk）
+      # 产物带版本号，与 Gitee 发行版的命名保持一致（如 s3-fileuploader-1.6.0.apk）
       - name: 整理产物
         run: |
           set -e
