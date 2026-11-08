@@ -76,8 +76,8 @@ public class SettingsFragment extends Fragment {
         // 载入定时时间
         Set<String> savedTimes = Prefs.getStringSet(requireContext(), Prefs.KEY_TIMES, new HashSet<>());
         if (savedTimes.isEmpty()) {
-            savedTimes.add("10:00");
-            savedTimes.add("19:00");
+            savedTimes.add("09:00");
+            savedTimes.add("18:20");
         }
         for (String t : savedTimes) addTimeRow(t);
 

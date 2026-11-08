@@ -21,7 +21,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="截图定时上传"
+            android:text="S3-fileuploader"
             android:textSize="22sp"
             android:textStyle="bold"
             android:textColor="#333333"/>
@@ -30,7 +30,7 @@
             android:id="@+id/tv_about_version"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="当前版本：v1.1.0"
+            android:text="当前版本：v1.3.0"
             android:textSize="14sp"
             android:textColor="#2196F3"
             android:layout_marginTop="6dp"
@@ -111,7 +111,24 @@
                 android:layout_height="wrap_content"
                 android:text="https://gitee.com/frwuc/screenshot-uploader"
                 android:textSize="13sp"
-                android:textColor="#C71D23"/>
+                android:textColor="#C71D23"
+                android:layout_marginBottom="10dp"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="联系邮箱（点击发送邮件）"
+                android:textSize="12sp"
+                android:textColor="#999999"/>
+
+            <TextView
+                android:id="@+id/tv_about_email"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="frwucc@163.com"
+                android:textSize="13sp"
+                android:textColor="#1976D2"
+                android:layout_marginBottom="10dp"/>
 
             <TextView
                 android:id="@+id/tv_about_license"

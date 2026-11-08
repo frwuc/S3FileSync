@@ -31,6 +31,7 @@ public class AboutFragment extends Fragment {
         TextView tvVersion = view.findViewById(R.id.tv_about_version);
         TextView tvGithub = view.findViewById(R.id.tv_about_github);
         TextView tvGitee = view.findViewById(R.id.tv_about_gitee);
+        TextView tvEmail = view.findViewById(R.id.tv_about_email);
         TextView tvLicense = view.findViewById(R.id.tv_about_license);
 
         // 版本号：从 PackageManager 读取
@@ -45,6 +46,7 @@ public class AboutFragment extends Fragment {
 
         setupLink(tvGithub, AboutConfig.GITHUB_URL);
         setupLink(tvGitee, AboutConfig.GITEE_URL);
+        setupEmail(tvEmail, AboutConfig.EMAIL);
         tvLicense.setText("开源协议：" + AboutConfig.LICENSE);
     }
 
@@ -53,6 +55,21 @@ public class AboutFragment extends Fragment {
         view.setOnClickListener(v -> {
             try {
                 Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                startActivity(intent);
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
+    /** 点击邮箱唤起邮件客户端 */
+    private void setupEmail(TextView view, final String email) {
+        view.setText(email);
+        view.setOnClickListener(v -> {
+            try {
+                Intent intent = new Intent(Intent.ACTION_SENDTO);
+                intent.setData(Uri.parse("mailto:" + email));
+                intent.putExtra(Intent.EXTRA_EMAIL, new String[]{email});
+                intent.putExtra(Intent.EXTRA_SUBJECT, "S3-fileuploader 反馈");
                 startActivity(intent);
             } catch (Exception ignored) {
             }

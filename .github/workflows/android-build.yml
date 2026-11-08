@@ -73,18 +73,18 @@ jobs:
       - name: 构建 Debug APK
         run: gradle assembleDebug --stacktrace --no-daemon
 
-      # 统一产物名 ScreenshotUploader.apk，方便后续步骤引用
+      # 统一产物名 S3-fileuploader.apk，方便后续步骤引用
       - name: 整理产物
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/ScreenshotUploader.apk dist/ScreenshotUploader.apk
+          cp app/build/outputs/apk/debug/S3-fileuploader.apk dist/S3-fileuploader.apk
           ls -lh dist/
 
       - name: 上传 APK 构建产物
         uses: actions/upload-artifact@v7
         with:
-          name: ScreenshotUploader
-          path: dist/ScreenshotUploader.apk
+          name: S3-fileuploader
+          path: dist/S3-fileuploader.apk
           retention-days: 7
 
       # 推送 v* 标签时，自动创建 GitHub Release 并附上 APK
@@ -92,7 +92,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/ScreenshotUploader.apk
+          files: dist/S3-fileuploader.apk
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

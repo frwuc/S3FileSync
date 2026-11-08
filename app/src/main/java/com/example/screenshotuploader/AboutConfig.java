@@ -6,8 +6,11 @@ package com.example.screenshotuploader;
 public final class AboutConfig {
     private AboutConfig() {}
 
-    public static final String APP_NAME = "截图定时上传";
-    public static final String APP_NAME_EN = "ScreenshotUploader";
+    public static final String APP_NAME = "S3-fileuploader";
+    public static final String APP_NAME_EN = "S3-fileuploader";
+
+    /** 联系邮箱 */
+    public static final String EMAIL = "frwucc@163.com";
 
     /** 开源地址 */
     public static final String GITHUB_URL = "https://github.com/frwuc/screenshot-uploader";
