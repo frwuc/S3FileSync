@@ -173,6 +173,18 @@
                     android:text="状态：就绪"
                     android:textSize="13sp"
                     android:textColor="#555555"/>
+
+                <TextView
+                    android:id="@+id/btn_schedule_helper"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
+                    android:text="⏰ 定时没触发？打开排查助手"
+                    android:textSize="13sp"
+                    android:textColor="#E65100"
+                    android:background="?android:attr/selectableItemBackground"/>
             </LinearLayout>
 
             <!-- 未配置提示 -->

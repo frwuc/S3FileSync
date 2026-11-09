@@ -172,6 +172,28 @@ public final class QiniuToken {
         return accessKey + ":" + urlSafeBase64(sign);
     }
 
+    /**
+     * 生成七牛「下载凭证」（私有空间的签名下载 URL 用）。
+     *
+     * <p>算法参考：https://developer.qiniu.com/kodo/1655/private：
+     *
+     * <pre>
+     * sign  = HmacSHA1(secretKey, 待签名 URL)
+     * token = AK ":" urlSafeBase64(sign)
+     * 最终下载 URL = 待签名 URL + "&amp;token=" + token
+     * </pre>
+     *
+     * 与上传/管理凭证不同，下载凭证只对 URL 本身签名（不含 Host 头、不含换行）。
+     *
+     * @param urlNoToken 不含 token 参数的完整下载 URL（域名 + 已编码的 key，可带 e 查询参数）
+     * @return 下载凭证字符串（AK:sign），拼接时需加 "&amp;token=" 前缀
+     */
+    public static String downloadToken(String accessKey, String secretKey, String urlNoToken) {
+        byte[] sign = hmacSha1(secretKey.getBytes(StandardCharsets.UTF_8),
+                urlNoToken.getBytes(StandardCharsets.UTF_8));
+        return accessKey + ":" + urlSafeBase64(sign);
+    }
+
     private static byte[] hmacSha1(byte[] key, byte[] data) {
         try {
             Mac mac = Mac.getInstance(HMAC_SHA1);

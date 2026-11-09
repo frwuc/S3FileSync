@@ -65,4 +65,27 @@ public class QiniuBucketApiTest {
         assertEquals("/list\n", QiniuToken.signingString("/list", null));
         assertEquals("/list\n", QiniuToken.signingString("/list", ""));
     }
+
+    // -------------------------------------------------- v1.8.0 删除 / 预览
+
+    @Test
+    public void urlSafeBase64NoPaddingMatchesQiniuFormat() {
+        // 与七牛官方 SDK 的 UrlSafeBase64.encodeToString(asUrlSafeStringNoPadding) 对齐：
+        // 标准 Base64 对应位值一致，'+'/'/' 换成 '-_'，去掉 '='。
+        // "abc" -> YWJj；"ab" -> YWI（= A2 -> 4 位去 1）；"a" -> YQ（A1 -> 4 位去 2）
+        assertEquals("YWJj", QiniuBucketApi.urlSafeBase64NoPadding(
+                new byte[]{'a', 'b', 'c'}));
+        assertEquals("YWI", QiniuBucketApi.urlSafeBase64NoPadding(
+                new byte[]{'a', 'b'}));
+        assertEquals("YQ", QiniuBucketApi.urlSafeBase64NoPadding(
+                new byte[]{'a'}));
+    }
+
+    @Test
+    public void trimDomainStripsTrailingSlashes() {
+        assertEquals("https://cdn.example.com", QiniuBucketApi.trimDomain("https://cdn.example.com/"));
+        assertEquals("cdn.example.com", QiniuBucketApi.trimDomain("cdn.example.com///"));
+        assertEquals("", QiniuBucketApi.trimDomain(null));
+        assertEquals("", QiniuBucketApi.trimDomain("   "));
+    }
 }

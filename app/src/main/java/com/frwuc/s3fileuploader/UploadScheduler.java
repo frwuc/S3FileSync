@@ -63,6 +63,42 @@ public class UploadScheduler {
         schedule(context, times);
     }
 
+    /** 测试闹钟的请求码（与正式闹钟的 1000+i 区间隔开） */
+    private static final int TEST_REQUEST_CODE = 9000;
+
+    /**
+     * 排一个「几分钟后触发一次」的测试闹钟，验证整条链路（闹钟 → 前台服务 → 上传）
+     * 在当前手机上是否真的能被唤醒。触发后 {@link AlarmReceiver} 会弹 Toast 提示，
+     * 上传结果在「执行记录」页查看；不影响正式的每日定时安排。
+     */
+    public static void scheduleTest(Context context, long delayMs) {
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+        Intent intent = new Intent(context, AlarmReceiver.class);
+        intent.putExtra(AlarmReceiver.EXTRA_TEST, true);
+        PendingIntent pi = PendingIntent.getBroadcast(
+                context, TEST_REQUEST_CODE, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        long triggerAt = System.currentTimeMillis() + delayMs;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+        } else {
+            am.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+        }
+    }
+
+    /** 正式闹钟排好后，下一次触发还剩多少毫秒；没有任何有效时间点返回 -1。 */
+    public static long nextTriggerDelayMs(List<String> times) {
+        long min = -1;
+        if (times == null) return -1;
+        for (String t : times) {
+            if (!isValidTime(t)) continue;
+            long d = getNextTriggerTime(t) - System.currentTimeMillis();
+            if (min < 0 || d < min) min = d;
+        }
+        return min;
+    }
+
     public static boolean isValidTime(String time) {
         if (time == null || time.length() != 5) return false;
         if (time.charAt(2) != ':') return false;

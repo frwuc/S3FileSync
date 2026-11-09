@@ -39,6 +39,9 @@ public class MainActivity extends AppCompatActivity {
             // 打开 App：按「设置 → 打开 App 时自动同步」决定是否立即同步一次。
             // 开关默认关闭；关闭时不发起任何上传请求。
             AutoSync.onMainEntered(this);
+            // 兜底重排定时闹钟：部分 ROM 会静默取消闹钟，App 打开即自愈一遍，
+            // 保证下次设定时间点仍在（内部会先校验时间点，没配置过则不动作）
+            UploadScheduler.reSchedule(this);
         } else {
             // 重建（如旋转屏幕）：Fragment 由 FragmentManager 恢复，
             // 这里只补回页签记录与标题，避免重复创建页面

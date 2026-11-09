@@ -341,5 +341,14 @@
             android:backgroundTint="#FF9800"
             android:textColor="@android:color/white"/>
 
+        <Button
+            android:id="@+id/btn_schedule_helper"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⏰ 定时不上传？点我逐项排查"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#FFF3E0"
+            android:textColor="#E65100"/>
+
     </LinearLayout>
 </ScrollView>

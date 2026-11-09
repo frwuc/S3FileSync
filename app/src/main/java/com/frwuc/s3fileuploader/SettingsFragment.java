@@ -41,7 +41,7 @@ public class SettingsFragment extends Fragment {
     private EditText etAccessKey, etSecretKey, etBucket, etDomain, etQiniuDir, etLocalDir;
     private Spinner spinnerLocalDir;
     private LinearLayout timesContainer;
-    private Button btnAddTime, btnSave, btnBattery, btnBrowseLocal, btnBrowseCloud;
+    private Button btnAddTime, btnSave, btnBattery, btnScheduleHelper, btnBrowseLocal, btnBrowseCloud;
     private SwitchCompat switchAutoSync;
 
     /** 常用本地文件目录，供下拉快速选择 */
@@ -74,6 +74,7 @@ public class SettingsFragment extends Fragment {
         btnAddTime = view.findViewById(R.id.btn_add_time);
         btnSave = view.findViewById(R.id.btn_save);
         btnBattery = view.findViewById(R.id.btn_battery);
+        btnScheduleHelper = view.findViewById(R.id.btn_schedule_helper);
         btnBrowseLocal = view.findViewById(R.id.btn_browse_local);
         btnBrowseCloud = view.findViewById(R.id.btn_browse_cloud);
         switchAutoSync = view.findViewById(R.id.switch_auto_sync);
@@ -94,6 +95,7 @@ public class SettingsFragment extends Fragment {
         btnAddTime.setOnClickListener(v -> addTimeRow(""));
         btnSave.setOnClickListener(v -> saveConfig());
         btnBattery.setOnClickListener(v -> openBatteryOptimization());
+        btnScheduleHelper.setOnClickListener(v -> ScheduleHelperDialog.show(this));
         btnBrowseLocal.setOnClickListener(v -> browseLocalDir());
         btnBrowseCloud.setOnClickListener(v -> browseCloudDir());
     }

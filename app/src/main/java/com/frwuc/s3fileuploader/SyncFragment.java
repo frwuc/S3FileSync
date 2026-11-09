@@ -58,6 +58,8 @@ public class SyncFragment extends Fragment {
         btnSync.setOnClickListener(v -> doSync());
         btnBrowseLocal.setOnClickListener(v -> browseLocal());
         btnBrowseCloud.setOnClickListener(v -> browseCloud());
+        view.findViewById(R.id.btn_schedule_helper)
+                .setOnClickListener(v -> ScheduleHelperDialog.show(this));
 
         refreshSummary();
     }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 文件预览对外打开（PDF / 视频等交给系统应用）时用 FileProvider 暴露内部文件 -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 应用私有 cache 目录：云端文件预览时的临时落点 -->
+    <cache-path name="preview_cache" path="."/>
+    <!-- 应用私有 files 目录：备用 -->
+    <files-path name="preview_files" path="."/>
+    <!-- 外部存储整目录：本地文件预览直接指向 /sdcard 下的原文件 -->
+    <external-path name="external_storage" path="."/>
+</paths>

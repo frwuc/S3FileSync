@@ -50,6 +50,8 @@ public final class QiniuBucketApi {
     private static final String LIST_PATH = "/list";
     /** 兜底 rsf 主机（华东 z0） */
     private static final String DEFAULT_RSF_HOST = "rsf.qbox.me";
+    /** 兜底 rs 主机（华东 z0），删除等文件管理接口用 */
+    private static final String DEFAULT_RS_HOST = "rs.qbox.me";
     /** UC 区域查询（无需签名）：返回 bucket 所在区域的 rs/rsf 等域名 */
     private static final String UC_QUERY_PATH = "/v4/query";
     private static final String UC_QUERY_HOST = "uc.qbox.me";
@@ -70,6 +72,9 @@ public final class QiniuBucketApi {
 
     /** rsf 主机缓存：key = ak@bucket。区域信息带 ttl，进程内缓存即可 */
     private static final Map<String, String> RSF_HOST_CACHE = new ConcurrentHashMap<>();
+
+    /** rs 主机缓存：key = ak@bucket。删除等管理接口用 */
+    private static final Map<String, String> RS_HOST_CACHE = new ConcurrentHashMap<>();
 
     private QiniuBucketApi() {
     }
@@ -135,6 +140,214 @@ public final class QiniuBucketApi {
         return result;
     }
 
+    // ---------------------------------------------------------------- 删除文件
+
+    /**
+     * 删除 bucket 下的一个文件（不可恢复）。
+     *
+     * <p>用官方管理接口 {@code POST https://rs.qbox.me/delete/<urlSafeBase64(key)>}，
+     * 需要「Qiniu」管理凭证，401 时回退旧版「QBox」签名（与列举接口同一套兼容策略）。
+     * 接口文档：https://developer.qiniu.com/kodo/1257/delete
+     *
+     * @param key 完整的文件 key，如 {@code daka_files/2024/xxx.jpg}
+     */
+    public static void delete(String accessKey, String secretKey, String bucket, String key)
+            throws IOException {
+        if (isBlank(accessKey) || isBlank(secretKey)) {
+            throw new IOException("请先填写七牛云 AK / SK");
+        }
+        if (isBlank(bucket)) {
+            throw new IOException("请先填写 Bucket 空间名称");
+        }
+        if (isBlank(key)) {
+            throw new IOException("文件 key 为空，无法删除");
+        }
+
+        String host = resolveRsHost(accessKey, bucket);
+        String path = "/delete/" + urlSafeBase64NoPadding(key.getBytes("UTF-8"));
+
+        String xQiniuDate = utcTimestamp();
+        // POST /delete/ 无请求体，也不带 Content-Type，签名里同样不能写
+        String qiniuToken = QiniuToken.qiniuMacToken(accessKey, secretKey, "POST",
+                path, "", host, "", xQiniuDate);
+        Response resp = postRequest(host, path, "Qiniu " + qiniuToken, xQiniuDate);
+        if (resp.code == HttpURLConnection.HTTP_OK) return;
+        if (resp.code != 401) {
+            throw new IOException("删除云端文件失败（HTTP " + resp.code + "）："
+                    + explain(resp.code, resp.body));
+        }
+
+        // 401 回退旧版「QBox」签名再试一次，兼容老账号
+        String qboxToken = QiniuToken.managementToken(accessKey, secretKey, path, "");
+        Response retry = postRequest(host, path, "QBox " + qboxToken, null);
+        if (retry.code == HttpURLConnection.HTTP_OK) return;
+        throw new IOException("删除云端文件失败（HTTP " + retry.code + "，新旧两种签名均被拒绝）："
+                + explain(retry.code, retry.body));
+    }
+
+    /** POST 一个无请求体的管理接口（与 doRequest 同构，仅方法与路径不同）。 */
+    private static Response postRequest(String host, String path, String authorization,
+                                        String xQiniuDate) throws IOException {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL("https://" + host + path);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setInstanceFollowRedirects(false);
+            conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            conn.setReadTimeout(READ_TIMEOUT_MS);
+            if (authorization != null) {
+                conn.setRequestProperty("Authorization", authorization);
+            }
+            if (xQiniuDate != null) {
+                conn.setRequestProperty("X-Qiniu-Date", xQiniuDate);
+            }
+            int code = conn.getResponseCode();
+            String body = readAll(code == HttpURLConnection.HTTP_OK
+                    ? conn.getInputStream() : conn.getErrorStream());
+            return new Response(code, body);
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    /** URL 安全 Base64（无 "=" 填充），与七牛查询接口（如 /delete）要求一致；纯 Java 实现，可单测。 */
+    static String urlSafeBase64NoPadding(byte[] data) {
+        final String ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                + "abcdefghijklmnopqrstuvwxyz0123456789-_";
+        StringBuilder sb = new StringBuilder(((data.length + 2) / 3) * 4);
+        for (int i = 0; i < data.length; i += 3) {
+            boolean has2 = i + 1 < data.length;
+            boolean has3 = i + 2 < data.length;
+            int b1 = data[i] & 0xFF;
+            int b2 = has2 ? data[i + 1] & 0xFF : 0;
+            int b3 = has3 ? data[i + 2] & 0xFF : 0;
+            int triple = (b1 << 16) | (b2 << 8) | b3;
+            sb.append(ALPHA.charAt((triple >> 18) & 0x3F));
+            sb.append(ALPHA.charAt((triple >> 12) & 0x3F));
+            if (has2) sb.append(ALPHA.charAt((triple >> 6) & 0x3F));
+            if (has3) sb.append(ALPHA.charAt(triple & 0x3F));
+        }
+        return sb.toString();
+    }
+
+    // ---------------------------------------------------------------- 预览下载
+
+    /**
+     * 按「访问域名」拉取云端文件内容，供 App 内预览。
+     *
+     * <p>先按公开空间直接 GET；被拒（401/403）时按私有空间自动附加下载凭证重试
+     * （{@link QiniuToken#downloadToken}，有效期 10 分钟）。私有空间不需要用户手动开关。
+     *
+     * @param accessKey  附加私有下载凭证用
+     * @param secretKey  同上
+     * @param domain     bucket 绑定的访问域名（如 {@code https://cdn.example.com}），
+     *                   支持填测试域名。请到七牛控制台 → 空间设置 → 域名管理确认
+     * @param key        文件完整 key
+     * @param maxBytes   内容字节上限，超出按失败处理（预览场景防内存溢出）
+     * @return 文件内容字节
+     */
+    public static byte[] fetchFile(String accessKey, String secretKey,
+                                   String domain, String key, int maxBytes) throws IOException {
+        if (isBlank(domain)) {
+            throw new IOException("请先在「设置 → 七牛云账号」填写空间绑定的访问域名"
+                    + "（可填七牛测试域名，到七牛控制台 → 空间设置 → 域名管理可查看）");
+        }
+        if (isBlank(key)) {
+            throw new IOException("文件 key 为空，无法预览");
+        }
+        // 拼接下载 URL：与上传成功日志 recordFileUrl 同一规则（保留 "/"，编码 " # ? % 等）
+        android.net.Uri.Builder builder = new android.net.Uri.Builder()
+                .scheme(schemeOf(trimDomain(domain)))
+                .encodedAuthority(authorityOf(trimDomain(domain)))
+                .appendEncodedPath(encodePathForUrl(key));
+        String base = builder.build().toString();
+
+        Response resp = getBinary(base, maxBytes);
+        if (resp.code != HttpURLConnection.HTTP_OK
+                && (resp.code == 401 || resp.code == 403)) {
+            // 公开 GET 被拒：按私有空间处理，附 10 分钟有效期的下载凭证重试
+            long deadline = System.currentTimeMillis() / 1000L + 600L;
+            String sep = base.contains("?") ? "&" : "?";
+            String signed = base + sep + "e=" + deadline
+                    + "&token=" + QiniuToken.downloadToken(accessKey, secretKey, base + sep + "e=" + deadline);
+            resp = getBinary(signed, maxBytes);
+        }
+        if (resp.code != HttpURLConnection.HTTP_OK) {
+            throw new IOException("下载云端文件失败（HTTP " + resp.code + "）："
+                    + (resp.body == null || resp.body.isEmpty()
+                    ? "请检查访问域名是否与七牛空间绑定一致" : brief(resp.body)));
+        }
+        return resp.data;
+    }
+
+    /** URL 地址规范化：去首尾空格与结尾斜杠，剩「scheme://host[:port]/path?query」中的一部分 */
+    static String trimDomain(String domain) {
+        String d = domain == null ? "" : domain.trim();
+        while (d.endsWith("/")) d = d.substring(0, d.length() - 1);
+        return d;
+    }
+
+    /** 域名带 scheme 时拆出 scheme 部分；不带 scheme（只有主机名）时默认 https */
+    private static String schemeOf(String domain) {
+        if (domain == null) return "https";
+        String lower = domain.toLowerCase(Locale.US);
+        int idx = lower.indexOf("://");
+        return (idx > 0 && idx <= 8) ? domain.substring(0, idx) : "https";
+    }
+
+    /** 域名拆掉 scheme 后的 authority（主机[:端口]）部分；没有 scheme 时原样返回 */
+    private static String authorityOf(String domain) {
+        if (domain == null) return "";
+        String lower = domain.toLowerCase(Locale.US);
+        int idx = lower.indexOf("://");
+        return (idx > 0 && idx <= 8) ? domain.substring(idx + 3) : domain;
+    }
+
+    /**
+     * key 拼到下载 URL 时逐段编码：保留 "/"（七牛路径层次符号），其余按七牛官方
+     * 「保留竖线之外特定字符」规则用 Uri.encode 即可（与 QiniuUploader.buildFileUrl 一致）。
+     */
+    private static String encodePathForUrl(String key) {
+        return android.net.Uri.encode(key, "/");
+    }
+
+    /** GET 下载一个文件，返回字节与状态码；响应超过 maxBytes 时中止。 */
+    private static Response getBinary(String url, int maxBytes) throws IOException {
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setRequestMethod("GET");
+            conn.setInstanceFollowRedirects(false);
+            conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            conn.setReadTimeout(READ_TIMEOUT_MS);
+            int code = conn.getResponseCode();
+            InputStream in = code == HttpURLConnection.HTTP_OK
+                    ? conn.getInputStream() : conn.getErrorStream();
+            byte[] data = new byte[0];
+            if (in != null) {
+                try (InputStream is = in) {
+                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                    byte[] buf = new byte[8192];
+                    int n;
+                    int total = 0;
+                    while ((n = is.read(buf)) != -1) {
+                        total += n;
+                        if (total > maxBytes) {
+                            throw new IOException("文件内容超过 "
+                                    + (maxBytes / 1024 / 1024) + " MB，预览已中止");
+                        }
+                        bos.write(buf, 0, n);
+                    }
+                    data = bos.toByteArray();
+                }
+            }
+            return new Response(code, data);
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
     // ---------------------------------------------------------------- 区域解析
 
     /**
@@ -179,16 +392,68 @@ public final class QiniuBucketApi {
         return DEFAULT_RSF_HOST;
     }
 
+    /**
+     * 查 bucket 所在区域的 rs 主机（删除等文件管理接口用）：UC /v4/query 返回的 hosts[0].rs。
+     * 查询失败时回退华东 rs.qbox.me。与 rsf 同一信任域名白名单。
+     */
+    static String resolveRsHost(String accessKey, String bucket) {
+        String cacheKey = accessKey + "@" + bucket;
+        String cached = RS_HOST_CACHE.get(cacheKey);
+        if (cached != null) return cached;
+
+        HttpURLConnection conn = null;
+        try {
+            String query = "ak=" + encode(accessKey) + "&bucket=" + encode(bucket);
+            conn = openGet(UC_QUERY_HOST, UC_QUERY_PATH, query, null, null);
+            int code = conn.getResponseCode();
+            String body = readAll(code == HttpURLConnection.HTTP_OK
+                    ? conn.getInputStream() : conn.getErrorStream());
+            if (code == HttpURLConnection.HTTP_OK) {
+                JSONObject json = new JSONObject(body);
+                JSONArray hosts = json.optJSONArray("hosts");
+                if (hosts != null && hosts.length() > 0) {
+                    JSONObject rs = hosts.optJSONObject(0).optJSONObject("rs");
+                    if (rs != null) {
+                        JSONArray domains = rs.optJSONArray("domains");
+                        if (domains != null && domains.length() > 0) {
+                            String host = domains.optString(0, "").trim().toLowerCase(Locale.US);
+                            if (isTrustedRsfHost(host)) {
+                                RS_HOST_CACHE.put(cacheKey, host);
+                                return host;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+            // 查不到区域就用默认主机，不影响主流程
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+        return DEFAULT_RS_HOST;
+    }
+
     // ---------------------------------------------------------------- 请求与签名
 
     /** 简单响应体 */
     private static final class Response {
         final int code;
         final String body;
+        /** 二进制响应体（下载接口用），文本接口为 null */
+        final byte[] data;
 
         Response(int code, String body) {
+            this(code, body, null);
+        }
+
+        Response(int code, byte[] data) {
+            this(code, "", data);
+        }
+
+        Response(int code, String body, byte[] data) {
             this.code = code;
             this.body = body;
+            this.data = data;
         }
     }
 

@@ -36,6 +36,8 @@ import java.util.concurrent.Executors;
  *   <li>逐级进入子文件夹、返回上级；</li>
  *   <li>列出文件夹内的文件（大小 + 修改时间），云端为 key 的 fsize / putTime；</li>
  *   <li>按名称或时间排序，点同一按钮切换升 / 降序；</li>
+ *   <li>点文件弹出操作单：<b>预览内容</b>（图片 / 文本 App 内直接看，其它交给系统应用）、
+ *       <b>删除文件</b>（本地直接删；云端调七牛管理接口真删，双重确认）、复制文件名；</li>
  *   <li>{@code pickMode} 为 true 时底部提供「选择此文件夹」，作为配置项取值入口；
  *       为 false 时仅浏览内容。</li>
  * </ul>
@@ -177,33 +179,133 @@ public class BrowserDialog {
             currentPath = entry.path;
             refresh();
         } else {
-            // 文件不可进入：弹出完整信息（名称不截断、可选中复制），方便核对是不是要同步的内容
-            showFileDetail(entry);
+            // 文件：弹出操作单（预览 / 删除 / 复制文件名），列表上方附完整文件信息
+            showFileActions(entry);
         }
     }
 
-    /** 文件详情：完整文件名 / 路径 / 大小 / 时间，文本可长按选中，也可一键复制文件名。 */
-    private void showFileDetail(BrowseEntry entry) {
+    /**
+     * 文件操作单：标题放文件名，正文放完整路径 / 大小 / 时间等信息，
+     * 列表项是实际操作。本地与云端文件都支持预览与删除；云端删除经七牛
+     * 管理接口真删 bucket 里的对象，所以额外做两级确认。
+     */
+    private void showFileActions(BrowseEntry entry) {
         StringBuilder sb = new StringBuilder();
-        sb.append("文件名：").append(entry.name)
-                .append("\n\n完整路径：").append(entry.path)
-                .append("\n\n大小：").append(formatSize(entry.size));
+        sb.append("完整路径：").append(entry.path)
+                .append("\n大小：").append(formatSize(entry.size));
         if (entry.mtimeMs > 0) {
-            sb.append("\n修改时间：").append(TIME_FMT.format(new Date(entry.mtimeMs)));
+            sb.append("\n").append(mode == Mode.CLOUD ? "上传时间" : "修改时间")
+                    .append("：").append(TIME_FMT.format(new Date(entry.mtimeMs)));
         }
 
-        AlertDialog detail = new AlertDialog.Builder(context)
-                .setTitle("文件信息")
+        new AlertDialog.Builder(context)
+                .setTitle(entry.name)
                 .setMessage(sb.toString())
-                .setPositiveButton("复制文件名", (d, w) -> copyFileName(entry.name))
+                .setItems(new CharSequence[]{
+                        "👁 预览内容",
+                        "🗑 删除文件（不可恢复）",
+                        "📋 复制文件名"
+                }, (d, which) -> {
+                    if (which == 0) previewEntry(entry);
+                    else if (which == 1) confirmDelete(entry);
+                    else copyFileName(entry.name);
+                })
                 .setNegativeButton("关闭", null)
-                .create();
-        detail.setOnShowListener(d -> {
-            // 让正文可长按选中复制（AlertDialog 的 message 默认不可选）
-            TextView msg = detail.findViewById(android.R.id.message);
-            if (msg != null) msg.setTextIsSelectable(true);
+                .show();
+    }
+
+    /** 预览：本地直接读原文件；云端先按访问域名把内容拉下来再展示。 */
+    private void previewEntry(BrowseEntry entry) {
+        if (mode == Mode.LOCAL) {
+            FilePreview.previewLocal(context, entry.path, entry.name);
+            return;
+        }
+        String domain = Prefs.getString(context, Prefs.KEY_DOMAIN, QiniuConfig.DOMAIN);
+        FilePreview.previewCloud(context, accessKey, secretKey, domain, entry.path, entry.name);
+    }
+
+    /** 删除前确认：本地一级；云端两级。 */
+    private void confirmDelete(BrowseEntry entry) {
+        String where = mode == Mode.LOCAL ? "本地手机" : "七牛云端";
+        String warn = mode == Mode.LOCAL
+                ? "将删除本地手机上的这个文件（不进回收站，不可恢复）：\n\n" + entry.path
+                : "将调用七牛管理接口删除 bucket「" + bucket + "」中的这个对象，"
+                + "删除后无法再恢复：\n\n" + entry.path;
+
+        new AlertDialog.Builder(context)
+                .setTitle("删除" + where + "文件")
+                .setMessage(warn)
+                .setPositiveButton("删除", (d, w) -> {
+                    if (mode == Mode.CLOUD) {
+                        doubleConfirmCloudDelete(entry);
+                    } else {
+                        deleteLocalFile(entry);
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    /** 云端删除第二级确认：再点一次「确认删除」。 */
+    private void doubleConfirmCloudDelete(BrowseEntry entry) {
+        new AlertDialog.Builder(context)
+                .setTitle("再确认一次")
+                .setMessage("这会真正删除云端文件，且无法恢复。\n确定要删除「" + entry.name + "」吗？")
+                .setPositiveButton("确认删除", (d, w) -> deleteCloudFile(entry))
+                .setNegativeButton("取消", null)
+                .create()
+                .show();
+    }
+
+    /** 删除本地文件：IO 线程删除，完成后刷新列表并提示结果。 */
+    private void deleteLocalFile(BrowseEntry entry) {
+        loading.setVisibility(View.VISIBLE);
+        IO.execute(() -> {
+            boolean ok = false;
+            String error = null;
+            try {
+                File file = new File(entry.path);
+                // 文件本已不存在也视为达成目的
+                ok = !file.exists() || file.delete();
+                if (!ok) error = "系统返回删除失败（文件被占用或没有写权限）";
+            } catch (Exception e) {
+                error = e.getMessage() == null ? e.toString() : e.getMessage();
+            }
+            final boolean okF = ok;
+            final String errF = error;
+            MAIN.post(() -> {
+                loading.setVisibility(View.GONE);
+                if (okF) {
+                    Toast.makeText(context, "已删除：" + entry.name, Toast.LENGTH_SHORT).show();
+                    refresh();
+                } else {
+                    Toast.makeText(context, "删除失败：" + errF, Toast.LENGTH_LONG).show();
+                }
+            });
         });
-        detail.show();
+    }
+
+    /** 删除云端文件：调 {@link QiniuBucketApi#delete}，管理接口在 IO 线程执行。 */
+    private void deleteCloudFile(BrowseEntry entry) {
+        loading.setVisibility(View.VISIBLE);
+        IO.execute(() -> {
+            String error = null;
+            try {
+                QiniuBucketApi.delete(accessKey, secretKey, bucket, entry.path);
+            } catch (Exception e) {
+                error = e.getMessage() == null ? e.toString() : e.getMessage();
+            }
+            final String errF = error;
+            MAIN.post(() -> {
+                loading.setVisibility(View.GONE);
+                if (errF == null) {
+                    Toast.makeText(context, "云端已删除：" + entry.name, Toast.LENGTH_SHORT).show();
+                    refresh();
+                } else {
+                    Toast.makeText(context, "删除失败：" + errF, Toast.LENGTH_LONG).show();
+                }
+            });
+        });
     }
 
     private void copyFileName(String name) {

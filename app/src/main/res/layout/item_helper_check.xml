@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 排查助手单行检查项：状态符号 + 标题 + 说明 + 可选动作按钮 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <TextView
+        android:id="@+id/tv_check_state"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="15sp"/>
+
+    <TextView
+        android:id="@+id/tv_check_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="15sp"
+        android:textStyle="bold"/>
+
+    <TextView
+        android:id="@+id/tv_check_desc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textSize="12sp"
+        android:textIsSelectable="true"/>
+
+    <Button
+        android:id="@+id/btn_check_action"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:minHeight="36dp"
+        android:backgroundTint="#E8EAF6"
+        android:textColor="#3F51B5"/>
+
+</LinearLayout>
