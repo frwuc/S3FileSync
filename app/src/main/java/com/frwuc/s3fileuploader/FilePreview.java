@@ -151,9 +151,10 @@ final class FilePreview {
     /** 文本预览：AlertDialog 内包一层 ScrollView + 可选中 TextView。 */
     private static void showText(Context context, byte[] bytes, String name, boolean truncated) {
         int len = Math.min(bytes.length, MAX_TEXT_BYTES);
-        String content = new String(bytes, 0, len, java.nio.charset.StandardCharsets.UTF_8);
-        // \r\n 统一成 \n；单独的 \r 也折行，避免老 txt 出现整行覆盖
-        content = content.replace("\r\n", "\n").replace('\r', '\n');
+        String raw = new String(bytes, 0, len, java.nio.charset.StandardCharsets.UTF_8);
+        // \r\n 统一成 \n；单独的 \r 也折行，避免老 txt 出现整行覆盖。
+        // 实际给 lambda 用的是这里的 final 变量（raw 被赋过值，lambda 引用会报错）
+        final String content = raw.replace("\r\n", "\n").replace('\r', '\n');
 
         TextView tv = new TextView(context);
         tv.setText(content);
