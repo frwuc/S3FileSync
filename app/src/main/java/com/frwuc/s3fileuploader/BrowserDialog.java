@@ -147,8 +147,18 @@ public class BrowserDialog {
             sort = sort.byTime() ? sort.toggle() : BrowseSort.TIME_DESC;
             applySort();
         });
+        // 点文件：直接预览内容（用户最常用的动作，不用先过一层操作单）
         listView.setOnItemClickListener((parent, itemView, position, id) ->
                 onEntryClick(adapter.getItem(position)));
+        // 长按文件：操作单（删除 / 复制文件名 / 文件信息），把删除藏在长按里防误触
+        listView.setOnItemLongClickListener((parent, itemView, position, id) -> {
+            BrowseEntry entry = adapter.getItem(position);
+            if (entry != null && !entry.dir) {
+                showFileActions(entry);
+                return true;
+            }
+            return false;
+        });
 
         AlertDialog.Builder builder = new AlertDialog.Builder(context)
                 .setTitle(mode == Mode.LOCAL ? "浏览本地文件夹" : "浏览云端目录")
@@ -179,13 +189,13 @@ public class BrowserDialog {
             currentPath = entry.path;
             refresh();
         } else {
-            // 文件：弹出操作单（预览 / 删除 / 复制文件名），列表上方附完整文件信息
-            showFileActions(entry);
+            // 文件：直接预览内容（长按弹出删除 / 复制文件名等操作单）
+            previewEntry(entry);
         }
     }
 
     /**
-     * 文件操作单：标题放文件名，正文放完整路径 / 大小 / 时间等信息，
+     * 文件操作单（长按文件弹出）：标题放文件名，正文放完整路径 / 大小 / 时间等信息，
      * 列表项是实际操作。本地与云端文件都支持预览与删除；云端删除经七牛
      * 管理接口真删 bucket 里的对象，所以额外做两级确认。
      */
