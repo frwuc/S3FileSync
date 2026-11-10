@@ -1,5 +1,5 @@
-//! UI 渲染：顶部页签 + 状态栏 + 四个页面 + 模态弹窗。
-//! 亮色主题，主色与 Python 端一致（#2563EB）。
+//! UI 渲染：左侧导航栏 + 状态栏 + 四个页面 + 模态弹窗。
+//! 亮色主题：浅灰画布 + 白色卡片，主色与 Python 端一致（#2563EB）。
 
 mod about;
 mod browser;
@@ -13,8 +13,12 @@ use crate::app::{S3App, Tab};
 
 pub const BLUE: Color32 = Color32::from_rgb(37, 99, 235);
 pub const TEXT_MUTED: Color32 = Color32::from_rgb(110, 118, 130);
+pub const TEXT_DARK: Color32 = Color32::from_rgb(0x33, 0x3A, 0x45);
 pub const RED: Color32 = Color32::from_rgb(220, 70, 70);
 pub const GREEN: Color32 = Color32::from_rgb(22, 140, 90);
+/// 画布底色（浅灰，与白色卡片形成层次）
+pub const CANVAS: Color32 = Color32::from_rgb(0xF5, 0xF6, 0xF8);
+pub const BORDER: Color32 = Color32::from_rgb(0xE4, 0xE7, 0xEC);
 
 pub fn human_size(n: i64) -> String {
     if n < 1024 {
@@ -53,16 +57,22 @@ pub fn render(app: &mut S3App, ctx: &Context) {
         crate::logger::info("窗口已隐藏到托盘（通过托盘菜单退出程序）");
     }
 
-    render_top(app, ctx);
+    render_nav(app, ctx);
     render_status_bar(app, ctx);
-    egui::CentralPanel::default().show(ctx, |ui| {
-        match app.tab {
-            Tab::Settings => settings::render(app, ui),
-            Tab::Browser => browser::render(app, ui),
-            Tab::Logs => logs::render(app, ui),
-            Tab::About => about::render(app, ui),
-        }
-    });
+    egui::CentralPanel::default()
+        .frame(
+            egui::Frame::new()
+                .fill(CANVAS)
+                .inner_margin(egui::Margin::same(12)),
+        )
+        .show(ctx, |ui| {
+            match app.tab {
+                Tab::Settings => settings::render(app, ui),
+                Tab::Browser => browser::render(app, ui),
+                Tab::Logs => logs::render(app, ui),
+                Tab::About => about::render(app, ui),
+            }
+        });
     render_modal(app, ctx);
 
     if app.quit_requested {
@@ -79,34 +89,71 @@ fn bar_frame() -> egui::Frame {
         .stroke(Stroke::new(1.0_f32, Color32::from_rgb(0xE8, 0xEB, 0xEF)))
 }
 
-fn render_top(app: &mut S3App, ctx: &Context) {
-    egui::TopBottomPanel::top("tabs")
-        .frame(bar_frame())
+fn render_nav(app: &mut S3App, ctx: &Context) {
+    egui::SidePanel::left("nav")
+        .frame(
+            egui::Frame::new()
+                .fill(Color32::WHITE)
+                .inner_margin(egui::Margin::same(12))
+                .stroke(Stroke::new(1.0_f32, BORDER)),
+        )
+        .exact_width(170.0)
+        .resizable(false)
         .show(ctx, |ui| {
+            // 品牌区：蓝色 Logo 块 + 名称
+            ui.add_space(6.0);
             ui.horizontal(|ui| {
-                ui.label(
-                    RichText::new("S3FileSync")
-                        .color(BLUE)
-                        .strong()
-                        .size(19.0),
-                );
-                ui.add_space(4.0);
-                ui.separator();
-                let tabs = [
-                    (Tab::Settings, "⚙ 设置"),
-                    (Tab::Browser, "📁 文件浏览"),
-                    (Tab::Logs, "📋 日志"),
-                    (Tab::About, "ℹ 关于"),
-                ];
-                for (tab, label) in tabs {
-                    let selected = app.tab == tab;
-                    if ui
-                        .selectable_label(selected, RichText::new(label).size(15.0))
-                        .clicked()
-                    {
-                        app.tab = tab;
-                    }
+                egui::Frame::new()
+                    .fill(BLUE)
+                    .corner_radius(8.0f32)
+                    .inner_margin(egui::Margin::symmetric(10, 7))
+                    .show(ui, |ui| {
+                        ui.label(RichText::new("S3").strong().color(Color32::WHITE).size(15.0));
+                    });
+                ui.label(RichText::new("S3FileSync").strong().size(17.0).color(TEXT_DARK));
+            });
+            ui.label(RichText::new("七牛云 Kodo 同步").small().color(TEXT_MUTED));
+            ui.add_space(14.0);
+
+            // 导航项：选中 = 蓝底白字，未选中 = 透明底深字
+            let items = [
+                (Tab::Settings, "⚙", "设置"),
+                (Tab::Browser, "📁", "文件浏览"),
+                (Tab::Logs, "📋", "日志"),
+                (Tab::About, "ℹ", "关于"),
+            ];
+            for (tab, icon, label) in items {
+                let selected = app.tab == tab;
+                let text = RichText::new(format!("{}  {}", icon, label))
+                    .size(15.0)
+                    .color(if selected {
+                        Color32::WHITE
+                    } else {
+                        TEXT_DARK
+                    });
+                let text = if selected { text.strong() } else { text };
+                let btn = egui::Button::new(text)
+                .fill(if selected { BLUE } else { Color32::TRANSPARENT })
+                .min_size(egui::vec2(ui.available_width(), 38.0));
+                if ui.add(btn).clicked() {
+                    app.tab = tab;
                 }
+                ui.add_space(4.0);
+            }
+
+            // 底部：版本 + 配置状态
+            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                let ready = app.cfg.is_ready();
+                ui.label(
+                    RichText::new(if ready { "● 已配置" } else { "● 待配置" })
+                        .small()
+                        .color(if ready { GREEN } else { RED }),
+                );
+                ui.label(
+                    RichText::new(format!("v{}", crate::config::APP_VERSION))
+                        .small()
+                        .color(TEXT_MUTED),
+                );
             });
         });
 }
@@ -116,23 +163,23 @@ fn render_status_bar(app: &mut S3App, ctx: &Context) {
         .frame(bar_frame())
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
-            // 运行徽标
-            let (badge, color) = if !app.cfg.is_ready() {
-                ("● 配置待完善", crate::ui::RED)
+            // 运行状态芯片（浅色底 + 彩色字）
+            let (badge, fg, bg) = if !app.cfg.is_ready() {
+                ("●  配置待完善", RED, Color32::from_rgb(0xFD, 0xEC, 0xEC))
             } else if app.paused {
-                ("● 自动同步已暂停", crate::ui::RED)
+                ("●  自动同步已暂停", RED, Color32::from_rgb(0xFD, 0xEC, 0xEC))
             } else {
-                ("● 自动同步运行中", crate::ui::GREEN)
+                ("●  自动同步运行中", GREEN, Color32::from_rgb(0xE6, 0xF5, 0xEE))
             };
-            ui.label(RichText::new(badge).color(color));
-            ui.separator();
+            chip(ui, badge, fg, bg);
+            ui.add_space(4.0);
             let mode_label = crate::config::sync_mode_label(&app.cfg.sync_mode)
                 .split('（')
                 .next()
                 .unwrap_or("")
                 .to_string();
-            ui.label(RichText::new(format!("默认：{}", mode_label)).color(TEXT_MUTED));
-            ui.separator();
+            chip(ui, &format!("方向：{}", mode_label), TEXT_MUTED, Color32::from_rgb(0xF0, 0xF2, 0xF5));
+            ui.add_space(4.0);
             ui.label(
                 RichText::new(&app.status).color(if app.status.contains("失败") || app.status.contains("错误") {
                     RED
@@ -175,13 +222,22 @@ fn render_status_bar(app: &mut S3App, ctx: &Context) {
                     crate::logger::info(&format!("自动同步已{}", if app.paused { "暂停" } else { "恢复" }));
                     app.schedule_next(false);
                 }
-                if ui.button("立即同步").clicked() {
+                // 主操作按钮：蓝底白字加高
+                if ui
+                    .add(
+                        egui::Button::new(
+                            RichText::new("立即同步").color(Color32::WHITE).size(14.0),
+                        )
+                        .fill(BLUE)
+                        .min_size(egui::vec2(96.0, 30.0)),
+                    )
+                    .clicked()
+                {
                     app.start_sync(None);
                 }
             });
         });
-        ui.add_space(4.0);
-    });
+        });
 }
 
 fn render_modal(app: &mut S3App, ctx: &Context) {
@@ -216,6 +272,17 @@ fn render_modal(app: &mut S3App, ctx: &Context) {
     if !open {
         app.test_result = None;
     }
+}
+
+/// 小型信息芯片（浅色底 + 彩色字），用于状态栏徽标。
+fn chip(ui: &mut egui::Ui, text: &str, fg: Color32, bg: Color32) {
+    egui::Frame::new()
+        .fill(bg)
+        .corner_radius(10.0f32)
+        .inner_margin(egui::Margin::symmetric(9, 3))
+        .show(ui, |ui| {
+            ui.label(RichText::new(text).small().color(fg).strong());
+        });
 }
 
 /// 卡片容器：浅灰画布上的白色圆角卡片。

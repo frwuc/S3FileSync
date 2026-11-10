@@ -147,7 +147,8 @@ pub fn render(app: &mut S3App, ui: &mut egui::Ui) {
                             .strong()
                             .color(egui::Color32::WHITE),
                     )
-                    .fill(BLUE),
+                    .fill(BLUE)
+                    .min_size(egui::vec2(110.0, 32.0)),
                 )
                 .clicked();
             if ok {

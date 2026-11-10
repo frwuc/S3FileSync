@@ -1,6 +1,6 @@
 //! 文件浏览页：云端目录列举、排序、多选、分页、上传/下载/删除。
 
-use egui::{RichText, TextEdit};
+use egui::{Color32, RichText, TextEdit};
 
 use super::{human_size, fmt_put_time, card, muted};
 use crate::app::{S3App, SortKey};
@@ -86,8 +86,20 @@ pub fn render(app: &mut S3App, ui: &mut egui::Ui) {
                         .color(crate::ui::TEXT_MUTED),
                     );
                 }
-                for it in &items {
-                    row(ui, app, it, &mut action);
+                for (i, it) in items.iter().enumerate() {
+                    // 斑马纹行背景（隔行浅灰）
+                    let zebra = if i % 2 == 1 {
+                        Color32::from_rgb(0xF8, 0xF9, 0xFB)
+                    } else {
+                        Color32::TRANSPARENT
+                    };
+                    egui::Frame::new()
+                        .fill(zebra)
+                        .corner_radius(4.0f32)
+                        .inner_margin(egui::Margin::symmetric(4, 3))
+                        .show(ui, |ui| {
+                            row(ui, app, it, &mut action);
+                        });
                 }
             });
 
