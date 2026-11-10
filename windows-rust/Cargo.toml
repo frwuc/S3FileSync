@@ -13,7 +13,9 @@ path = "src/main.rs"
 eframe = "0.31"
 egui = "0.31"
 tray-icon = "0.19"
-ureq = { version = "2.10", default-features = false, features = ["native-tls"] }
+# native-tls 后端必须显式经 AgentBuilder::tls_connector 注入（2.12 起不再自动接线）
+ureq = { version = "2.12", default-features = false, features = ["native-tls"] }
+native-tls = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha1 = "0.10"

@@ -539,8 +539,20 @@ impl Read for MultipartBody {
 
 // ---------------- 工具函数 ----------------
 
+/// 系统原生 TLS 连接器（Windows = schannel，走系统证书库，兼容企业代理根证书）。
+fn tls_connector() -> std::sync::Arc<native_tls::TlsConnector> {
+    match native_tls::TlsConnector::new() {
+        Ok(c) => std::sync::Arc::new(c),
+        Err(e) => {
+            // TLS 后端是硬依赖，初始化失败直接给出可读报错
+            panic!("初始化 TLS 失败: {}", e)
+        }
+    }
+}
+
 fn build_agent(direct: bool) -> ureq::Agent {
     let mut builder = ureq::AgentBuilder::new()
+        .tls_connector(tls_connector())
         .timeout_connect(CONNECT_TIMEOUT)
         .timeout_read(READ_TIMEOUT);
     if !direct {
@@ -564,6 +576,7 @@ fn build_agent(direct: bool) -> ureq::Agent {
 
 fn probe_direct() -> bool {
     let agent = ureq::AgentBuilder::new()
+        .tls_connector(tls_connector())
         .timeout_connect(Duration::from_millis(2500))
         .build();
     // 任何 HTTP 响应都视为连通

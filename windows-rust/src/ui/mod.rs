@@ -71,36 +71,51 @@ pub fn render(app: &mut S3App, ctx: &Context) {
     }
 }
 
+/// 顶栏/底栏通用的白色条样式（浅灰画布上的白色横条，底部/顶部带分隔线）。
+fn bar_frame() -> egui::Frame {
+    egui::Frame::new()
+        .fill(Color32::WHITE)
+        .inner_margin(egui::Margin::symmetric(12, 8))
+        .stroke(Stroke::new(1.0_f32, Color32::from_rgb(0xE8, 0xEB, 0xEF)))
+}
+
 fn render_top(app: &mut S3App, ctx: &Context) {
-    egui::TopBottomPanel::top("tabs").show(ctx, |ui| {
-        ui.add_space(4.0);
-        ui.horizontal(|ui| {
-            ui.label(RichText::new("S3FileSync").color(BLUE).strong().size(18.0));
-            ui.separator();
-            let tabs = [
-                (Tab::Settings, "⚙ 设置"),
-                (Tab::Browser, "📁 文件浏览"),
-                (Tab::Logs, "📋 日志"),
-                (Tab::About, "ℹ 关于"),
-            ];
-            for (tab, label) in tabs {
-                let selected = app.tab == tab;
-                if ui
-                    .selectable_label(selected, RichText::new(label).size(15.0))
-                    .clicked()
-                {
-                    app.tab = tab;
+    egui::TopBottomPanel::top("tabs")
+        .frame(bar_frame())
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.label(
+                    RichText::new("S3FileSync")
+                        .color(BLUE)
+                        .strong()
+                        .size(19.0),
+                );
+                ui.add_space(4.0);
+                ui.separator();
+                let tabs = [
+                    (Tab::Settings, "⚙ 设置"),
+                    (Tab::Browser, "📁 文件浏览"),
+                    (Tab::Logs, "📋 日志"),
+                    (Tab::About, "ℹ 关于"),
+                ];
+                for (tab, label) in tabs {
+                    let selected = app.tab == tab;
+                    if ui
+                        .selectable_label(selected, RichText::new(label).size(15.0))
+                        .clicked()
+                    {
+                        app.tab = tab;
+                    }
                 }
-            }
+            });
         });
-        ui.add_space(4.0);
-    });
 }
 
 fn render_status_bar(app: &mut S3App, ctx: &Context) {
-    egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
-        ui.add_space(4.0);
-        ui.horizontal(|ui| {
+    egui::TopBottomPanel::bottom("status")
+        .frame(bar_frame())
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
             // 运行徽标
             let (badge, color) = if !app.cfg.is_ready() {
                 ("● 配置待完善", crate::ui::RED)
@@ -203,17 +218,17 @@ fn render_modal(app: &mut S3App, ctx: &Context) {
     }
 }
 
-/// 卡片容器
+/// 卡片容器：浅灰画布上的白色圆角卡片。
 pub fn card(ui: &mut egui::Ui, title: &str, add: impl FnOnce(&mut egui::Ui)) {
     egui::Frame::new()
-        .fill(Color32::from_rgb(249, 250, 251))
-        .stroke(Stroke::new(1.0_f32, Color32::from_rgb(225, 228, 232)))
-        .corner_radius(6.0f32)
-        .inner_margin(12.0)
+        .fill(Color32::WHITE)
+        .stroke(Stroke::new(1.0_f32, Color32::from_rgb(0xE4, 0xE7, 0xEC)))
+        .corner_radius(8.0f32)
+        .inner_margin(egui::Margin::same(14))
         .show(ui, |ui| {
             ui.set_min_width(ui.available_width());
-            ui.label(RichText::new(title).strong().color(BLUE));
-            ui.add_space(6.0);
+            ui.label(RichText::new(title).strong().color(BLUE).size(15.0));
+            ui.add_space(8.0);
             add(ui);
         });
 }
