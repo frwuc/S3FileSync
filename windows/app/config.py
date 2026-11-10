@@ -13,7 +13,7 @@ import shutil
 log = logging.getLogger('s3filesync.config')
 
 APP_NAME = 'S3FileSync'
-APP_VERSION = '1.0.1'
+APP_VERSION = '1.0.2'
 
 # 后端说明：当前仅七牛云 Kodo 经过实测；其余 S3 兼容服务商尚未验证。
 BACKEND_NOTE = '当前后端：七牛云 Kodo（S3 兼容）；其他 S3 兼容服务商暂未验证'
