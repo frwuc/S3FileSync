@@ -307,11 +307,3 @@ class QiniuKodo:
             timeout=60,
         )
         return r
-
-    def console_url(self, prefix='') -> str:
-        """七牛控制台的空间内容管理页（用于「打开云端目录」）。"""
-        from urllib.parse import quote
-        url = 'https://portal.qiniu.com/kodo/bucket/resource?bucket=' + quote(self.bucket, safe='')
-        if prefix:
-            url += '&prefix=' + quote(prefix, safe='')
-        return url

@@ -50,7 +50,7 @@ def build(app):
                          command=lambda: app.start_sync('both'))
     run_menu.add_separator()
     run_menu.add_command(label='打开本地目录', command=app.open_download_dir)
-    run_menu.add_command(label='打开云端目录（七牛云）', command=app.open_cloud_dir)
+    run_menu.add_command(label='打开云端目录', command=app.open_cloud_dir)
     run_menu.add_separator()
     run_menu.add_command(label='隐藏窗口到托盘', command=app.hide_window)
     btn_run = ttk.Button(right, text='单跑 ▾')
@@ -69,6 +69,7 @@ def build(app):
     from app.gui.settings_page import SettingsPage
     from app.gui.browser_page import BrowserPage
     from app.gui.log_page import LogPage
+    from app.gui.about_page import AboutPage
 
     nb = app.notebook
     nb.pack(fill='both', expand=True, padx=16, pady=(14, 8))
@@ -79,8 +80,11 @@ def build(app):
     nb.add(browser, text='  文件浏览  ')
     logp = LogPage(nb, app)
     nb.add(logp, text='  日志  ')
+    about = AboutPage(nb, app)
+    nb.add(about, text='  关于  ')
 
-    app.pages = {'settings': settings, 'browser': browser, 'log': logp}
+    app.pages = {'settings': settings, 'browser': browser, 'log': logp,
+                 'about': about}
 
     def on_tab_changed(_event):
         try:

@@ -48,7 +48,7 @@ def make_icon(post_event, is_paused):
                          checked=lambda _item: is_paused()),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem('打开本地目录', act('open_dir')),
-        pystray.MenuItem('打开云端目录（七牛云）', act('open_cloud')),
+        pystray.MenuItem('打开云端目录', act('open_cloud')),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem('退出', act('quit')),
     )

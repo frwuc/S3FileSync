@@ -501,20 +501,29 @@ class App:
         self.open_local_dir()
 
     def open_cloud_dir(self, prefix=None):
-        """在浏览器打开七牛云控制台的当前云端目录。"""
+        """在浏览器打开云端目录的访问地址（S3 兼容：使用配置的下载/访问域名）。
+
+        不再跳转七牛云控制台 —— 作为 S3 兼容工具，应打开用户配置的可公开访问的
+        域名地址，对任意 S3 兼容服务商都通用。
+        """
         import webbrowser
         from urllib.parse import quote
-        bucket = self.cfg.get('bucket', '')
-        if not bucket:
-            messagebox.showwarning('云端目录', '请先在设置页填写 Bucket 名称。', parent=self.root)
+        domain = (self.cfg.get('download_domain') or '').strip()
+        if not domain:
+            messagebox.showwarning(
+                '打开云端',
+                '尚未配置「下载域名 / 访问域名」。\n'
+                '请到设置页填写后重试（将用它拼出云端的访问地址）。',
+                parent=self.root)
             return
+        if not domain.startswith(('http://', 'https://')):
+            domain = 'https://' + domain
         p = norm_prefix(prefix if prefix is not None else self.cfg.get('prefix', ''))
-        url = ('https://portal.qiniu.com/kodo/bucket/resource?bucket=' +
-               quote(bucket, safe=''))
+        url = domain.rstrip('/')
         if p:
-            url += '&prefix=' + quote(p, safe='')
+            url += '/' + quote(p, safe='')
         webbrowser.open(url)
-        self.status_var.set('已在浏览器打开云端目录: {0}'.format(p or '桶根目录'))
+        self.status_var.set('已在浏览器打开云端地址: {0}'.format(url))
 
     def focus_browser(self, prefix=None):
         """切到文件浏览页并按给定云端目录重新列举。"""
