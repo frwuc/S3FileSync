@@ -265,6 +265,38 @@ impl Kodo {
         Ok(all)
     }
 
+    /// 目录浏览用：列某前缀下的一级子目录（delimiter=/，返回完整前缀，以 / 结尾）。
+    pub fn list_dirs(&mut self, prefix: &str) -> Result<Vec<String>, QErr> {
+        self.resolve_hosts();
+        let mut browse = prefix.trim().to_string();
+        if !browse.is_empty() && !browse.ends_with('/') {
+            browse.push('/');
+        }
+        let mut params: Vec<(&str, String)> = vec![
+            ("bucket", self.bucket.clone()),
+            ("limit", 1000.to_string()),
+            ("delimiter", "/".to_string()),
+        ];
+        if !browse.is_empty() {
+            params.push(("prefix", browse));
+        }
+        let query = join_query(&params);
+        let body = self.mgmt_get(&self.rsf_host.clone(), "/list", &query)?;
+        let v: serde_json::Value = serde_json::from_str(&body)
+            .map_err(|e| format!("云端返回内容无法解析: {} / {}", e, truncate(&body, 120)))?;
+        let mut dirs: Vec<String> = v["commonPrefixes"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                    .collect()
+            })
+            .unwrap_or_default();
+        dirs.sort();
+        dirs.dedup();
+        Ok(dirs)
+    }
+
     // ---------- 删除 ----------
 
     pub fn delete(&mut self, key: &str) -> Result<(), QErr> {
@@ -540,7 +572,7 @@ impl Read for MultipartBody {
 // ---------------- 工具函数 ----------------
 
 /// 系统原生 TLS 连接器（Windows = schannel，走系统证书库，兼容企业代理根证书）。
-fn tls_connector() -> std::sync::Arc<native_tls::TlsConnector> {
+pub(crate) fn tls_connector() -> std::sync::Arc<native_tls::TlsConnector> {
     match native_tls::TlsConnector::new() {
         Ok(c) => std::sync::Arc::new(c),
         Err(e) => {
@@ -550,7 +582,7 @@ fn tls_connector() -> std::sync::Arc<native_tls::TlsConnector> {
     }
 }
 
-fn build_agent(direct: bool) -> ureq::Agent {
+pub(crate) fn build_agent(direct: bool) -> ureq::Agent {
     let mut builder = ureq::AgentBuilder::new()
         .tls_connector(tls_connector())
         .timeout_connect(CONNECT_TIMEOUT)
@@ -575,12 +607,21 @@ fn build_agent(direct: bool) -> ureq::Agent {
 }
 
 fn probe_direct() -> bool {
+    probe_host_direct("https://uc.qbox.me")
+}
+
+/// 探测某主机能否直连（不带代理）：任何 HTTP 响应（含 4xx/5xx）都算连通，
+/// 只有传输层失败（DNS/TCP/TLS）才判为不可直连。
+pub(crate) fn probe_host_direct(url: &str) -> bool {
     let agent = ureq::AgentBuilder::new()
         .tls_connector(tls_connector())
         .timeout_connect(Duration::from_millis(2500))
         .build();
-    // 任何 HTTP 响应都视为连通
-    matches!(agent.get("https://uc.qbox.me").call(), Ok(_)) || agent.get("https://uc.qbox.me").call().is_ok()
+    match agent.get(url).call() {
+        Ok(_) => true,
+        Err(ureq::Error::Status(_, _)) => true, // 连上了，只是状态码非 2xx
+        Err(ureq::Error::Transport(_)) => false,
+    }
 }
 
 fn read_body(resp: ureq::Response) -> Result<String, QErr> {
@@ -592,7 +633,7 @@ fn read_body(resp: ureq::Response) -> Result<String, QErr> {
     Ok(out)
 }
 
-struct Limited<R: Read> {
+pub(crate) struct Limited<R: Read> {
     inner: R,
     remaining: usize,
 }
@@ -609,7 +650,7 @@ impl<R: Read> Read for Limited<R> {
     }
 }
 
-fn limite_reader<R: Read>(r: R) -> Limited<R> {
+pub(crate) fn limite_reader<R: Read>(r: R) -> Limited<R> {
     Limited {
         inner: r,
         remaining: MAX_RESPONSE_BYTES,
@@ -617,7 +658,7 @@ fn limite_reader<R: Read>(r: R) -> Limited<R> {
 }
 
 /// 取错误的可读文本；ureq 2.x 里 into_reader 需要 Response 所有权，所以接收 e 本体。
-fn err_text(e: ureq::Error) -> String {
+pub(crate) fn err_text(e: ureq::Error) -> String {
     let mut text = e.to_string();
     if let ureq::Error::Status(_, resp) = e {
         let mut body = String::new();
@@ -630,7 +671,7 @@ fn err_text(e: ureq::Error) -> String {
 }
 
 /// ureq 2.x 的 Error 没有 status() 方法，模式匹配取 HTTP 状态码（非状态错误返回 0）。
-fn status_of(e: &ureq::Error) -> u16 {
+pub(crate) fn status_of(e: &ureq::Error) -> u16 {
     match e {
         ureq::Error::Status(code, _) => *code,
         _ => 0,

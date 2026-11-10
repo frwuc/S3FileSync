@@ -9,7 +9,25 @@ use std::path::PathBuf;
 
 pub const APP_NAME: &str = "S3FileSync";
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const BACKEND_NOTE: &str = "当前后端：七牛云 Kodo（S3 兼容）；其他 S3 兼容服务商暂未验证";
+pub const BACKEND_NOTE: &str = "支持后端：七牛云 Kodo 与 S3 协议兼容存储（AWS S3 / MinIO 等）";
+
+/// 存储服务商
+pub const PROVIDERS: [(&str, &str); 2] = [
+    ("qiniu", "七牛云 Kodo"),
+    ("s3", "S3 兼容存储（AWS / MinIO 等）"),
+];
+
+pub fn provider_label(p: &str) -> &'static str {
+    PROVIDERS
+        .iter()
+        .find(|(k, _)| *k == p)
+        .map(|(_, v)| *v)
+        .unwrap_or("七牛云 Kodo")
+}
+
+pub fn valid_provider(p: &str) -> bool {
+    PROVIDERS.iter().any(|(k, _)| *k == p)
+}
 
 pub const SYNC_MODES: [(&str, &str); 3] = [
     ("download", "仅下载（云端 → 本地）"),
@@ -54,13 +72,21 @@ pub fn valid_sync_mode(mode: &str) -> bool {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(default)]
 pub struct Config {
+    /// 存储服务商：qiniu（默认，兼容旧配置）/ s3
+    pub provider: String,
     pub ak: String,
     pub sk: String,
     pub bucket: String,
-    /// z0 / cn-east-2 / z1 / z2 / na0 / as0
+    /// z0 / cn-east-2 / z1 / z2 / na0 / as0（七牛区域）
     pub region: String,
-    /// 桶绑定域名；留空自动获取
+    /// 桶绑定域名；留空自动获取（七牛）
     pub download_domain: String,
+    /// S3 兼容存储：服务端点，如 https://s3.us-east-1.amazonaws.com 或 http://127.0.0.1:9000
+    pub s3_endpoint: String,
+    /// S3 兼容存储：区域名
+    pub s3_region: String,
+    /// S3 兼容存储：是否强制路径寻址（bucket 放路径而非子域）
+    pub s3_path_style: bool,
     /// 本地同步根目录（下载目标，也是上传来源）
     pub download_dir: String,
     /// 自动同步间隔（分钟）
@@ -78,11 +104,15 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
+            provider: "qiniu".to_string(),
             ak: String::new(),
             sk: String::new(),
             bucket: String::new(),
             region: "z0".to_string(),
             download_domain: String::new(),
+            s3_endpoint: String::new(),
+            s3_region: "us-east-1".to_string(),
+            s3_path_style: false,
             download_dir: String::new(),
             interval_minutes: 30,
             prefix: String::new(),
@@ -94,8 +124,17 @@ impl Default for Config {
 }
 
 impl Config {
+    pub fn is_s3(&self) -> bool {
+        self.provider == "s3"
+    }
+
     pub fn is_ready(&self) -> bool {
-        !self.ak.is_empty() && !self.sk.is_empty() && !self.bucket.is_empty() && !self.download_dir.is_empty()
+        let base = !self.ak.is_empty() && !self.sk.is_empty() && !self.bucket.is_empty() && !self.download_dir.is_empty();
+        if self.is_s3() {
+            base && !self.s3_endpoint.trim().is_empty()
+        } else {
+            base
+        }
     }
 }
 
@@ -130,6 +169,9 @@ pub fn load() -> Config {
     };
     if !valid_sync_mode(&cfg.sync_mode) {
         cfg.sync_mode = "download".into();
+    }
+    if !valid_provider(&cfg.provider) {
+        cfg.provider = "qiniu".into();
     }
     cfg
 }
@@ -181,5 +223,41 @@ mod tests {
         let c: Config = serde_json::from_str(py).unwrap();
         assert_eq!(c.region, "z0");
         assert!(!c.upload_overwrite);
+        // 旧配置无 provider 字段 → 默认七牛
+        assert_eq!(c.provider, "qiniu");
+    }
+
+    #[test]
+    fn s3_config_roundtrip() {
+        let c = Config {
+            provider: "s3".into(),
+            ak: "AK".into(),
+            sk: "SK".into(),
+            bucket: "bkt".into(),
+            s3_endpoint: "http://127.0.0.1:9000".into(),
+            s3_region: "us-east-1".into(),
+            s3_path_style: true,
+            download_dir: "D:/x".into(),
+            ..Default::default()
+        };
+        let s = serde_json::to_string(&c).unwrap();
+        let back: Config = serde_json::from_str(&s).unwrap();
+        assert!(back.is_s3());
+        assert!(back.is_ready());
+        assert_eq!(back.s3_endpoint, "http://127.0.0.1:9000");
+        assert!(back.s3_path_style);
+    }
+
+    #[test]
+    fn s3_ready_requires_endpoint() {
+        let mut c = Config::default();
+        c.provider = "s3".into();
+        c.ak = "a".into();
+        c.sk = "s".into();
+        c.bucket = "b".into();
+        c.download_dir = "d".into();
+        assert!(!c.is_ready(), "S3 模式必须有 endpoint");
+        c.s3_endpoint = "https://s3.amazonaws.com".into();
+        assert!(c.is_ready());
     }
 }

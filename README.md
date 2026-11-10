@@ -1,18 +1,18 @@
 # S3FileSync
 
 **S3 兼容对象存储同步工具**——把**任意文件**在「本地目录」与「云端空间」之间同步，支持
-**仅上传 / 仅下载 / 双向**三种方向。当前后端为**七牛云 Kodo（S3 兼容）**，其他 S3 兼容
-服务商尚未验证。
+**仅上传 / 仅下载 / 双向**三种方向。支持后端：**七牛云 Kodo** 与 **S3 协议兼容存储**
+（AWS S3、MinIO 等，见下方各客户端支持情况）。
 
 本仓库包含三个客户端，共用同一套数据目录（`%APPDATA%\S3FileSync\`）与同步语义：
 
-| 客户端 | 目录 | 平台 | 技术栈 | 产物 |
+| 客户端 | 目录 | 平台 | 技术栈 | 后端支持 |
 | --- | --- | --- | --- | --- |
-| 桌面端（Python） | [`windows/`](windows/) | Windows（托盘常驻） | Python + Tkinter | `S3FileSync.exe`（PyInstaller） |
-| 桌面端（Rust） | [`windows-rust/`](windows-rust/) | Windows（托盘常驻） | Rust + egui 原生 GUI | `S3FileSync.exe`（单文件约 6MB） |
-| 安卓端 | [`android/`](android/) | Android | Kotlin + Java | `S3FileSync-<version>.apk` |
+| 桌面端（Python） | [`windows/`](windows/) | Windows（托盘常驻） | Python + Tkinter | 七牛云 Kodo |
+| 桌面端（Rust） | [`windows-rust/`](windows-rust/) | Windows（托盘常驻） | Rust + egui 原生 GUI | 七牛云 Kodo + **S3 兼容存储**（AWS / MinIO 等） |
+| 安卓端 | [`android/`](android/) | Android | Kotlin + Java | 七牛云 Kodo |
 
-三个客户端都对接同一个七牛云 Bucket，文件名/目录结构在多端保持一致（上传不加时间戳、
+各客户端都对接同一个云端 Bucket，文件名/目录结构在多端保持一致（上传不加时间戳、
 下载不加前缀），可互相补齐新增文件。两个桌面端共用同一份
 `config.json / sync_state.json / app.log`，可互换使用、无缝切换。
 
@@ -20,12 +20,15 @@
 
 - 三种同步方向：仅下载（云端 → 本地）、仅上传（本地 → 云端）、双向同步
 - 任意文件类型：图片、文档、压缩包、视频……子文件夹递归扫描
-- 本地目录 / 云端目录均可浏览选择（不限于固定前缀）
+- 本地目录 / 云端目录均可浏览选择（不限于固定前缀；Rust 端支持云端目录逐级浏览）
 - 文件内容可预览、可删除（云端走管理接口真删）
 - 定时自动同步（安卓端多时间点、Windows 端手动/常驻触发）
-- 本地签发上传凭证，无需自建服务器
+- 本地签发上传凭证 / 签名，无需自建服务器
 
-> 注：当前仅七牛云 Kodo 经过实测；其它 S3 兼容服务商（如 MinIO、AWS S3）的兼容性暂未验证。
+> 注：S3 协议兼容存储（AWS S3、MinIO 等）目前由 **Rust 桌面端**支持
+> （设置页「存储服务商」切换）；Python 端与安卓端仍为七牛 Kodo 专用。
+> AWS 端点已实测请求链路（SigV4 签名格式正确）；MinIO 等自建端点请以
+> 「测试连接 / 测试上传」验证。
 
 ## 目录结构
 

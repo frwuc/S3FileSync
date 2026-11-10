@@ -8,9 +8,9 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use crate::config::{self, Config};
-use crate::qiniu::client::{Kodo, ListItem};
-use crate::qiniu::etag;
+use crate::qiniu::client::ListItem;
 use crate::state::{self, SyncState};
+use crate::storage::Backend;
 
 const ILLEGAL: [char; 7] = ['<', '>', ':', '"', '|', '?', '*'];
 const SKIP_NAMES: [&str; 3] = ["thumbs.db", "desktop.ini", ".ds_store"];
@@ -136,7 +136,7 @@ pub fn iter_local_files(root: &Path, prefix: &str) -> Vec<(String, PathBuf, u64)
 
 fn upload_phase(
     cfg: &Config,
-    client: &mut Kodo,
+    client: &mut Backend,
     state: &mut SyncState,
     root: &Path,
     prefix: &str,
@@ -155,7 +155,7 @@ fn upload_phase(
     let files = iter_local_files(root, prefix);
     summary.local_total = files.len();
     for (key, path, size) in files {
-        let h = match etag::etag_file(&path) {
+        let h = match client.local_hash(&path) {
             Ok(h) => h,
             Err(e) => {
                 summary.failed.push((key, format!("无法计算本地校验值: {}", e)));
@@ -163,7 +163,7 @@ fn upload_phase(
             }
         };
         if let Some(cur) = remote_map.get(&key) {
-            if cur.hash == h {
+            if client.content_matches(&cur.hash, &h, cur.fsize, size) {
                 summary.skipped += 1;
                 continue;
             }
@@ -193,7 +193,7 @@ fn upload_phase(
 
 fn download_phase(
     _cfg: &Config,
-    client: &mut Kodo,
+    client: &mut Backend,
     state: &mut SyncState,
     root: &Path,
     prefix: &str,
@@ -293,11 +293,12 @@ pub fn run_once(cfg: &Config, mode: Option<&str>) -> Summary {
         ..Default::default()
     };
     let mut state = state::load();
-    let mut client = Kodo::new(&cfg.ak, &cfg.sk, &cfg.bucket, &cfg.region,
-                               &cfg.download_domain, &cfg.proxy_mode);
+    let mut client = Backend::new(cfg);
+    let provider_name = config::provider_label(&cfg.provider);
     crate::logger::info(&format!(
-        "同步方向: {}（云端目录: {}）",
+        "同步方向: {}（后端: {}，云端目录: {}）",
         config::sync_mode_label(&mode),
+        provider_name,
         if prefix.is_empty() { "整个空间".into() } else { prefix.clone() }
     ));
 
@@ -316,7 +317,7 @@ pub fn run_once(cfg: &Config, mode: Option<&str>) -> Summary {
         }
     }
     summary.error = if errors.is_empty() { None } else { Some(errors.join("; ")) };
-    if let Some(reg) = &client.detected_region {
+    if let Some(reg) = &client.detected_region() {
         summary.detected_region = Some(reg.clone());
     }
     let _ = state::save(&state);

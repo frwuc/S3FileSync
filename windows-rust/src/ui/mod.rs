@@ -74,6 +74,7 @@ pub fn render(app: &mut S3App, ctx: &Context) {
             }
         });
     render_modal(app, ctx);
+    render_prefix_picker(app, ctx);
 
     if app.quit_requested {
         crate::logger::info("程序退出");
@@ -112,7 +113,11 @@ fn render_nav(app: &mut S3App, ctx: &Context) {
                     });
                 ui.label(RichText::new("S3FileSync").strong().size(17.0).color(TEXT_DARK));
             });
-            ui.label(RichText::new("七牛云 Kodo 同步").small().color(TEXT_MUTED));
+            ui.label(
+                RichText::new(if app.cfg.is_s3() { "S3 兼容存储同步" } else { "七牛云 Kodo 同步" })
+                    .small()
+                    .color(TEXT_MUTED),
+            );
             ui.add_space(14.0);
 
             // 导航项：选中 = 蓝底白字，未选中 = 透明底深字
@@ -302,4 +307,146 @@ pub fn card(ui: &mut egui::Ui, title: &str, add: impl FnOnce(&mut egui::Ui)) {
 
 pub fn muted(ui: &mut egui::Ui, text: impl Into<String>) {
     ui.label(RichText::new(text.into()).small().color(TEXT_MUTED));
+}
+
+/// 云端目录选择器弹窗（设置页「浏览…」）：逐级浏览云端子目录，选中回填前缀字段。
+fn render_prefix_picker(app: &mut S3App, ctx: &Context) {
+    let Some(picker) = app.prefix_picker.as_mut() else { return };
+    let mut open = true;
+    let cancel = std::cell::Cell::new(false);
+    let mut enter: Option<String> = None;
+    let mut choose: Option<String> = None;
+    let mut action_up = false;
+    let mut action_refresh = false;
+
+    let current = picker.current.clone();
+    let busy = picker.busy;
+    let dirs = picker.dirs.clone();
+    let status = picker.status.clone();
+
+    egui::Window::new("选择云端目录")
+        .open(&mut open)
+        .collapsible(false)
+        .resizable(false)
+        .min_width(460.0)
+        .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+        .show(ctx, |ui| {
+            ui.set_min_width(480.0);
+
+            // 当前位置与操作
+            ui.horizontal(|ui| {
+                ui.label(
+                    RichText::new(if current.is_empty() {
+                        "当前：桶根目录".to_string()
+                    } else {
+                        format!("当前：{}/", current)
+                    })
+                    .strong()
+                    .color(TEXT_DARK),
+                );
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("刷新").clicked() {
+                        action_refresh = true;
+                    }
+                    if ui
+                        .add_enabled(!current.is_empty() && !busy, egui::Button::new("⬆ 上级"))
+                        .clicked()
+                    {
+                        action_up = true;
+                    }
+                });
+            });
+            ui.separator();
+
+            // 子目录列表
+            egui::ScrollArea::vertical()
+                .id_salt("prefix_picker_dirs")
+                .max_height(280.0)
+                .show(ui, |ui| {
+                    if busy {
+                        ui.horizontal(|ui| {
+                            ui.add(egui::Spinner::new());
+                            ui.label("正在列举子目录…");
+                        });
+                    } else if dirs.is_empty() {
+                        ui.label(
+                            RichText::new("该目录下没有子目录，可以直接使用当前目录")
+                                .color(TEXT_MUTED),
+                        );
+                    }
+                    for dir in &dirs {
+                        // 显示相对当前目录的一级名称
+                        let rel = if current.is_empty() {
+                            dir.trim_matches('/')
+                        } else {
+                            dir.strip_prefix(&format!("{}/", current.trim_end_matches('/')))
+                                .unwrap_or(dir)
+                                .trim_end_matches('/')
+                        };
+                        egui::Frame::new()
+                            .fill(Color32::from_rgb(0xF8, 0xF9, 0xFB))
+                            .corner_radius(4.0f32)
+                            .inner_margin(egui::Margin::symmetric(6, 4))
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.label(RichText::new(format!("📁 {}", rel)).color(BLUE));
+                                    ui.with_layout(
+                                        egui::Layout::right_to_left(egui::Align::Center),
+                                        |ui| {
+                                            if ui.button("选择").clicked() {
+                                                choose = Some(dir.clone());
+                                            }
+                                            if ui.button("进入").clicked() {
+                                                enter = Some(dir.clone());
+                                            }
+                                        },
+                                    );
+                                });
+                            });
+                        ui.add_space(2.0);
+                    }
+                });
+            ui.separator();
+
+            // 状态与底部按钮
+            ui.horizontal(|ui| {
+                ui.label(RichText::new(&status).small().color(TEXT_MUTED));
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("取消").clicked() {
+                        cancel.set(true);
+                    }
+                    if ui
+                        .add(
+                            egui::Button::new(
+                                RichText::new("使用当前目录").color(Color32::WHITE),
+                            )
+                            .fill(BLUE)
+                            .min_size(egui::vec2(110.0, 30.0)),
+                        )
+                        .clicked()
+                    {
+                        choose = Some(current.clone());
+                    }
+                });
+            });
+        });
+
+    // 事件统一处理（借用已释放）
+    let closed = cancel.get() || !open;
+    if !closed {
+        if let Some(d) = enter {
+            app.prefix_picker_enter(&d);
+        }
+        if action_up {
+            app.prefix_picker_up();
+        }
+        if action_refresh {
+            app.prefix_picker_refresh();
+        }
+        if let Some(d) = choose {
+            app.prefix_picker_choose(&d);
+        }
+    } else {
+        app.prefix_picker = None;
+    }
 }

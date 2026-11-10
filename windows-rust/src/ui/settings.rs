@@ -2,20 +2,52 @@
 
 use egui::{RichText, TextEdit};
 
-use super::{card, muted, BLUE, TEXT_MUTED};
+use super::{card, muted, BLUE, TEXT_DARK, TEXT_MUTED};
 use crate::app::S3App;
 
 pub fn render(app: &mut S3App, ui: &mut egui::Ui) {
+    let is_s3 = app.f_provider == "s3";
     egui::ScrollArea::vertical().show(ui, |ui| {
-        card(ui, "七牛云账号（Kodo）", |ui| {
-            muted(ui, crate::config::BACKEND_NOTE);
-            ui.add_space(4.0);
+        card(ui, "存储服务商", |ui| {
+            ui.horizontal(|ui| {
+                for (code, label) in crate::config::PROVIDERS {
+                    let selected = app.f_provider == code;
+                    let text = RichText::new(label)
+                        .color(if selected {
+                            egui::Color32::WHITE
+                        } else {
+                            TEXT_DARK
+                        });
+                    let text = if selected { text.strong() } else { text };
+                    if ui
+                        .add(
+                            egui::Button::new(text)
+                                .fill(if selected { BLUE } else { egui::Color32::TRANSPARENT }),
+                        )
+                        .clicked()
+                    {
+                        app.f_provider = code.to_string();
+                    }
+                }
+            });
+            muted(
+                ui,
+                if is_s3 {
+                    "S3 协议兼容存储：AWS S3、MinIO、阿里云 OSS（兼容模式）等。需填写服务端点与区域。"
+                } else {
+                    "七牛云对象存储 Kodo。密钥在七牛控制台「密钥管理」获取。"
+                },
+            );
+        });
+
+        ui.add_space(8.0);
+        card(ui, if is_s3 { "S3 存储账号" } else { "七牛云账号（Kodo）" }, |ui| {
             egui::Grid::new("acct").num_columns(2).spacing([10.0, 8.0]).show(ui, |ui| {
-                ui.label("Access Key (AK)");
-                ui.add(TextEdit::singleline(&mut app.f_ak).desired_width(340.0).hint_text("七牛控制台「密钥管理」"));
+                ui.label(if is_s3 { "Access Key ID" } else { "Access Key (AK)" });
+                ui.add(TextEdit::singleline(&mut app.f_ak).desired_width(340.0).hint_text(if is_s3 { "AKIA…" } else { "七牛控制台「密钥管理」" }));
                 ui.end_row();
 
-                ui.label("Secret Key (SK)");
+                ui.label(if is_s3 { "Secret Access Key" } else { "Secret Key (SK)" });
                 ui.horizontal(|ui| {
                     ui.add(TextEdit::singleline(&mut app.f_sk).desired_width(300.0).password(!app.show_sk).hint_text("仅保存在本机"));
                     if ui.button(if app.show_sk { "隐藏" } else { "显示" }).clicked() {
@@ -24,27 +56,58 @@ pub fn render(app: &mut S3App, ui: &mut egui::Ui) {
                 });
                 ui.end_row();
 
-                ui.label("Bucket 空间名");
+                ui.label("Bucket 桶名");
                 ui.add(TextEdit::singleline(&mut app.f_bucket).desired_width(340.0));
                 ui.end_row();
 
-                ui.label("存储区域");
-                ui.horizontal(|ui| {
-                    egui::ComboBox::from_id_salt("region")
-                        .selected_text(if app.f_region.is_empty() { "z0".to_string() } else { app.f_region.clone() })
-                        .width(160.0)
-                        .show_ui(ui, |ui| {
-                            for (code, name) in crate::config::REGIONS {
-                                ui.selectable_value(&mut app.f_region, code.to_string(), format!("{}（{}）", code, name));
-                            }
-                        });
-                    ui.add(TextEdit::singleline(&mut app.f_region).desired_width(120.0).hint_text("可手动输入"));
-                });
-                ui.end_row();
+                if is_s3 {
+                    ui.label("服务端点 (Endpoint)");
+                    ui.add(
+                        TextEdit::singleline(&mut app.f_endpoint)
+                            .desired_width(340.0)
+                            .hint_text("https://s3.us-east-1.amazonaws.com 或 http://127.0.0.1:9000"),
+                    );
+                    ui.end_row();
 
-                ui.label("下载域名 (可选)");
-                ui.add(TextEdit::singleline(&mut app.f_domain).desired_width(340.0).hint_text("留空自动获取"));
-                ui.end_row();
+                    ui.label("区域 (Region)");
+                    ui.add(
+                        TextEdit::singleline(&mut app.f_s3_region)
+                            .desired_width(200.0)
+                            .hint_text("如 us-east-1 / cn-north-1 / minio"),
+                    );
+                    ui.end_row();
+
+                    ui.label("寻址方式");
+                    ui.horizontal(|ui| {
+                        egui::ComboBox::from_id_salt("addr_style")
+                            .selected_text(if app.f_path_style { "路径式（/bucket/key）" } else { "自动（AWS 虚拟主机式）" })
+                            .width(230.0)
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(&mut app.f_path_style, false, "自动（AWS 虚拟主机式）");
+                                ui.selectable_value(&mut app.f_path_style, true, "路径式（/bucket/key）");
+                            });
+                        muted(ui, "MinIO 等自定义端点自动用路径式");
+                    });
+                    ui.end_row();
+                } else {
+                    ui.label("存储区域");
+                    ui.horizontal(|ui| {
+                        egui::ComboBox::from_id_salt("region")
+                            .selected_text(if app.f_region.is_empty() { "z0".to_string() } else { app.f_region.clone() })
+                            .width(160.0)
+                            .show_ui(ui, |ui| {
+                                for (code, name) in crate::config::REGIONS {
+                                    ui.selectable_value(&mut app.f_region, code.to_string(), format!("{}（{}）", code, name));
+                                }
+                            });
+                        ui.add(TextEdit::singleline(&mut app.f_region).desired_width(120.0).hint_text("可手动输入"));
+                    });
+                    ui.end_row();
+
+                    ui.label("下载域名 (可选)");
+                    ui.add(TextEdit::singleline(&mut app.f_domain).desired_width(340.0).hint_text("留空自动获取"));
+                    ui.end_row();
+                }
             });
         });
 
@@ -94,8 +157,11 @@ pub fn render(app: &mut S3App, ui: &mut egui::Ui) {
 
                 ui.label("云端目录（Key 前缀）");
                 ui.horizontal(|ui| {
-                    ui.add(TextEdit::singleline(&mut app.f_prefix).desired_width(260.0).hint_text("留空 = 整个桶"));
-                    muted(ui, "留空 = 整个桶");
+                    ui.add(TextEdit::singleline(&mut app.f_prefix).desired_width(220.0).hint_text("留空 = 整个桶"));
+                    if ui.button("浏览…").clicked() {
+                        app.prefix_picker_open();
+                    }
+                    muted(ui, "可直接浏览云端目录选择");
                 });
                 ui.end_row();
             });

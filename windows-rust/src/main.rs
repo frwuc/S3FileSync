@@ -16,6 +16,7 @@ mod config;
 mod logger;
 mod qiniu;
 mod state;
+mod storage;
 mod sync;
 mod tray;
 mod ui;

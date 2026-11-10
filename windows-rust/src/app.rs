@@ -12,8 +12,9 @@ use std::time::{Duration, Instant};
 use egui::Context;
 
 use crate::config::{self, Config};
-use crate::qiniu::client::{Kodo, ListItem};
+use crate::qiniu::client::ListItem;
 use crate::state;
+use crate::storage::Backend;
 use crate::sync::{self, Summary};
 use crate::ui;
 use crate::{autostart, logger, tray};
@@ -23,6 +24,8 @@ pub enum Task {
     TestConnection { cfg: Config },
     TestUpload { cfg: Config },
     List { cfg: Config, prefix: String, marker: Option<String> },
+    /// 目录浏览（设置页云端目录选择器）：列某前缀下一级子目录
+    ListDirs { cfg: Config, prefix: String },
     DeleteKeys { cfg: Config, keys: Vec<String> },
     DownloadKeys { cfg: Config, entries: Vec<ListItem>, root: String },
     UploadFiles { cfg: Config, specs: Vec<(PathBuf, String)>, prefix: String },
@@ -33,6 +36,8 @@ pub enum WorkerEvent {
     TestDone { title: String, ok: bool, msg: String },
     ListDone { items: Vec<ListItem>, next_marker: Option<String>, req_marker: Option<String> },
     ListFailed { msg: String },
+    DirsDone { dirs: Vec<String>, req_prefix: String },
+    DirsFailed { msg: String },
     OpDone { title: String, msg: String, refresh_browser: bool },
     RegionDetected(String),
 }
@@ -85,14 +90,30 @@ impl Default for BrowserState {
     }
 }
 
+/// 云端目录选择器（设置页「浏览…」弹窗）状态
+pub struct PrefixPicker {
+    /// 正在浏览的目录（规范化，无尾 /；空 = 桶根）
+    pub current: String,
+    /// 一级子目录（完整前缀，以 / 结尾）
+    pub dirs: Vec<String>,
+    /// 上级历史（「返回上级」用）
+    pub stack: Vec<String>,
+    pub busy: bool,
+    pub status: String,
+}
+
 pub struct S3App {
     pub cfg: Config,
     // 设置页表单（编辑中，保存前不影响运行配置）
+    pub f_provider: String,
     pub f_ak: String,
     pub f_sk: String,
     pub f_bucket: String,
     pub f_region: String,
     pub f_domain: String,
+    pub f_endpoint: String,
+    pub f_s3_region: String,
+    pub f_path_style: bool,
     pub f_dir: String,
     pub f_prefix: String,
     pub f_mode: String,
@@ -113,6 +134,7 @@ pub struct S3App {
     pub logs_cursor: usize,
 
     pub browser: BrowserState,
+    pub prefix_picker: Option<PrefixPicker>,
 
     pub task_tx: Sender<Task>,
     pub ev_rx: Receiver<WorkerEvent>,
@@ -129,11 +151,15 @@ impl S3App {
 
         let cfg = config::load();
         let app = S3App {
+            f_provider: cfg.provider.clone(),
             f_ak: cfg.ak.clone(),
             f_sk: cfg.sk.clone(),
             f_bucket: cfg.bucket.clone(),
             f_region: cfg.region.clone(),
             f_domain: cfg.download_domain.clone(),
+            f_endpoint: cfg.s3_endpoint.clone(),
+            f_s3_region: cfg.s3_region.clone(),
+            f_path_style: cfg.s3_path_style,
             f_dir: cfg.download_dir.clone(),
             f_prefix: cfg.prefix.clone(),
             f_mode: cfg.sync_mode.clone(),
@@ -155,6 +181,7 @@ impl S3App {
                 prefix_input: crate::sync::norm_prefix(&cfg.prefix),
                 ..Default::default()
             },
+            prefix_picker: None,
             task_tx: task_tx.clone(),
             ev_rx,
             tray: None,
@@ -192,11 +219,15 @@ impl S3App {
 
     fn collect_form(&self) -> Config {
         Config {
+            provider: if self.f_provider == "s3" { "s3".into() } else { "qiniu".into() },
             ak: self.f_ak.trim().to_string(),
             sk: self.f_sk.trim().to_string(),
             bucket: self.f_bucket.trim().to_string(),
             region: self.f_region.trim().to_string(),
             download_domain: self.f_domain.trim().to_string(),
+            s3_endpoint: self.f_endpoint.trim().to_string(),
+            s3_region: self.f_s3_region.trim().to_string(),
+            s3_path_style: self.f_path_style,
             download_dir: self.f_dir.trim().to_string(),
             interval_minutes: self.f_interval.max(1),
             prefix: crate::sync::norm_prefix(&self.f_prefix),
@@ -216,11 +247,11 @@ impl S3App {
             return;
         }
         logger::info(&format!(
-            "设置已保存（空间: {}，区域: {}，方向: {}，云端目录: {}，间隔: {} 分钟，网络: {}）",
+            "设置已保存（后端: {}，空间: {}，云端目录: {}，方向: {}，间隔: {} 分钟，网络: {}）",
+            config::provider_label(&data.provider),
             data.bucket,
-            data.region,
-            config::sync_mode_label(&data.sync_mode),
             if data.prefix.is_empty() { "整个空间".to_string() } else { data.prefix.clone() },
+            config::sync_mode_label(&data.sync_mode),
             data.interval_minutes,
             data.proxy_mode
         ));
@@ -236,11 +267,13 @@ impl S3App {
 
     pub fn test_connection(&mut self) {
         let data = self.collect_form();
-        if !data.is_ready() && (data.ak.is_empty() || data.sk.is_empty() || data.bucket.is_empty()) {
-            self.test_result = Some((
-                "测试连接".into(),
-                "请先填写 AK / SK / 空间名".into(),
-            ));
+        let missing = if data.is_s3() {
+            "请先填写 AK / SK / 桶名 / S3 服务端点"
+        } else {
+            "请先填写 AK / SK / 空间名"
+        };
+        if data.ak.is_empty() || data.sk.is_empty() || data.bucket.is_empty() || (data.is_s3() && data.s3_endpoint.is_empty()) {
+            self.test_result = Some(("测试连接".into(), missing.into()));
             return;
         }
         self.status = "正在测试连接…".into();
@@ -416,6 +449,79 @@ impl S3App {
         });
     }
 
+    // ---------- 云端目录选择器（设置页） ----------
+
+    /// 打开云端目录选择器，从当前表单的前缀开始浏览。
+    pub fn prefix_picker_open(&mut self) {
+        let cfg = self.collect_form();
+        if cfg.ak.is_empty() || cfg.sk.is_empty() || cfg.bucket.is_empty()
+            || (cfg.is_s3() && cfg.s3_endpoint.is_empty())
+        {
+            self.test_result = Some((
+                "选择云端目录".into(),
+                "请先填写访问密钥（AK/SK）与桶名；S3 存储还需填写服务端点。".into(),
+            ));
+            return;
+        }
+        let start = crate::sync::norm_prefix(&self.f_prefix);
+        self.prefix_picker = Some(PrefixPicker {
+            current: start.clone(),
+            dirs: Vec::new(),
+            stack: Vec::new(),
+            busy: true,
+            status: "正在列举…".into(),
+        });
+        self.submit(Task::ListDirs { cfg, prefix: start });
+    }
+
+    /// 进入某个子目录（dir 为完整前缀，可带尾 /）。
+    pub fn prefix_picker_enter(&mut self, dir: &str) {
+        let Some(p) = self.prefix_picker.as_mut() else { return };
+        let cur = p.current.clone();
+        let target = crate::sync::norm_prefix(dir.trim_end_matches('/'));
+        p.stack.push(cur);
+        p.current = target.clone();
+        p.busy = true;
+        p.status = "正在列举…".into();
+        p.dirs.clear();
+        let cfg = self.collect_form();
+        self.submit(Task::ListDirs { cfg, prefix: target });
+    }
+
+    /// 返回上级目录。
+    pub fn prefix_picker_up(&mut self) {
+        let Some(p) = self.prefix_picker.as_mut() else { return };
+        let target = if let Some(prev) = p.stack.pop() {
+            prev
+        } else {
+            let mut parts: Vec<&str> = p.current.split('/').filter(|s| !s.is_empty()).collect();
+            parts.pop();
+            parts.join("/")
+        };
+        p.current = target.clone();
+        p.busy = true;
+        p.status = "正在列举…".into();
+        p.dirs.clear();
+        let cfg = self.collect_form();
+        self.submit(Task::ListDirs { cfg, prefix: target });
+    }
+
+    /// 刷新当前目录。
+    pub fn prefix_picker_refresh(&mut self) {
+        let Some(p) = self.prefix_picker.as_mut() else { return };
+        p.busy = true;
+        p.status = "正在列举…".into();
+        let prefix = p.current.clone();
+        let cfg = self.collect_form();
+        self.submit(Task::ListDirs { cfg, prefix });
+    }
+
+    /// 选定目录回填到设置页前缀字段并关闭弹窗。
+    pub fn prefix_picker_choose(&mut self, prefix: &str) {
+        self.f_prefix = crate::sync::norm_prefix(prefix.trim_end_matches('/'));
+        self.prefix_picker = None;
+    }
+
     // ---------- 调度 ----------
 
     pub fn schedule_next(&mut self, keep_status: bool) {
@@ -508,6 +614,27 @@ impl S3App {
                 self.browser.status = format!("列举失败: {}", msg);
                 logger::error(&format!("列举对象失败: {}", msg));
             }
+            WorkerEvent::DirsDone { dirs, req_prefix } => {
+                if let Some(p) = self.prefix_picker.as_mut() {
+                    if p.current == req_prefix {
+                        p.busy = false;
+                        let n = dirs.len();
+                        p.dirs = dirs;
+                        p.status = if n == 0 {
+                            "该目录下没有子目录（可直接使用当前目录）".into()
+                        } else {
+                            format!("{} 个子目录", n)
+                        };
+                    }
+                }
+            }
+            WorkerEvent::DirsFailed { msg } => {
+                if let Some(p) = self.prefix_picker.as_mut() {
+                    p.busy = false;
+                    p.status = format!("列举失败: {}", msg);
+                    logger::error(&format!("列举子目录失败: {}", msg));
+                }
+            }
             WorkerEvent::OpDone { title, msg, refresh_browser } => {
                 self.browser.busy = false;
                 self.browser.status = msg.clone();
@@ -590,23 +717,42 @@ impl S3App {
         let _ = std::process::Command::new("explorer").arg(&d).spawn();
     }
 
-    /// 浏览器打开云端目录（用配置的下载域名拼访问地址）。
+    /// 浏览器打开云端目录（七牛用下载域名拼地址；S3 用端点 + 桶路径）。
     pub fn open_cloud(&self) -> Result<(), String> {
-        let domain = self.cfg.download_domain.trim().trim_end_matches('/');
-        if domain.is_empty() {
-            return Err("尚未配置「下载域名 / 访问域名」。请到设置页填写后重试。".into());
-        }
-        let d = if domain.starts_with("http://") || domain.starts_with("https://") {
-            domain.to_string()
-        } else {
-            format!("https://{}", domain)
-        };
         let p = crate::sync::norm_prefix(&self.cfg.prefix);
-        let mut url = d;
-        if !p.is_empty() {
-            url.push('/');
-            url.push_str(&crate::qiniu::client::enc(&p));
-        }
+        let url = if self.cfg.is_s3() {
+            let ep = self.cfg.s3_endpoint.trim().trim_end_matches('/');
+            if ep.is_empty() {
+                return Err("尚未配置 S3 服务端点。请到设置页填写后重试。".into());
+            }
+            let base = if ep.starts_with("http://") || ep.starts_with("https://") {
+                ep.to_string()
+            } else {
+                format!("https://{}", ep)
+            };
+            let mut url = format!("{}/{}", base, crate::qiniu::client::enc(&self.cfg.bucket));
+            if !p.is_empty() {
+                url.push('/');
+                url.push_str(&crate::qiniu::client::enc(&p));
+            }
+            url
+        } else {
+            let domain = self.cfg.download_domain.trim().trim_end_matches('/');
+            if domain.is_empty() {
+                return Err("尚未配置「下载域名 / 访问域名」。请到设置页填写后重试。".into());
+            }
+            let d = if domain.starts_with("http://") || domain.starts_with("https://") {
+                domain.to_string()
+            } else {
+                format!("https://{}", domain)
+            };
+            let mut url = d;
+            if !p.is_empty() {
+                url.push('/');
+                url.push_str(&crate::qiniu::client::enc(&p));
+            }
+            url
+        };
         let _ = webbrowser::open(&url);
         logger::info(&format!("已在浏览器打开云端地址: {}", url));
         Ok(())
@@ -632,37 +778,53 @@ fn worker_loop(rx: Receiver<Task>, ev: Sender<WorkerEvent>) {
                 let _ = ev.send(WorkerEvent::SyncDone(summary));
             }
             Task::TestConnection { cfg } => {
-                let mut c = Kodo::new(&cfg.ak, &cfg.sk, &cfg.bucket, &cfg.region, &cfg.download_domain, &cfg.proxy_mode);
+                let mut backend = Backend::new(&cfg);
                 let prefix = sync::norm_prefix(&cfg.prefix);
-                match c.list_page(&prefix, None, 5) {
+                match backend.list_page(&prefix, None, 5) {
                     Ok((items, _)) => {
                         let mut msg = format!(
-                            "Bucket: {}\n当前云端目录: {}\n本页对象数: {}",
+                            "服务商: {}\nBucket: {}\n当前云端目录: {}\n本页对象数: {}",
+                            config::provider_label(&cfg.provider),
                             cfg.bucket,
                             if prefix.is_empty() { "整个桶".to_string() } else { prefix.clone() },
                             items.len()
                         );
                         msg.push_str(&format!(
                             "\n网络模式: {}",
-                            if c.direct { "直连（忽略系统代理）" } else { "系统代理" }
+                            if backend.is_direct() { "直连（忽略系统代理）" } else { "系统代理" }
                         ));
+                        msg.push_str(&format!("\n请求端点: {}", backend.endpoint_display()));
                         msg.push_str(&format!("\n同步方向: {}", config::sync_mode_label(&cfg.sync_mode)));
-                        match c.resolve_domain() {
-                            Ok(domain) => {
-                                msg.push_str(&format!("\n下载域名: {}", domain));
-                                if let Some(first) = items.first() {
-                                    match c.probe_status(&first.key) {
-                                        Ok(code) => {
-                                            msg.push_str(&format!(
-                                                "\n私有下载测试: {}",
-                                                if code == 200 { "OK".to_string() } else { format!("失败 HTTP {}", code) }
-                                            ));
+                        // 七牛专属：下载域名与私有下载探测
+                        if let Backend::Kodo(k) = &mut backend {
+                            match k.resolve_domain() {
+                                Ok(domain) => {
+                                    msg.push_str(&format!("\n下载域名: {}", domain));
+                                    if let Some(first) = items.first() {
+                                        match k.probe_status(&first.key) {
+                                            Ok(code) => {
+                                                msg.push_str(&format!(
+                                                    "\n私有下载测试: {}",
+                                                    if code == 200 { "OK".to_string() } else { format!("失败 HTTP {}", code) }
+                                                ));
+                                            }
+                                            Err(e) => msg.push_str(&format!("\n私有下载测试: 失败 {}", e)),
                                         }
-                                        Err(e) => msg.push_str(&format!("\n私有下载测试: 失败 {}", e)),
                                     }
                                 }
+                                Err(e) => msg.push_str(&format!("\n下载域名获取失败: {}", e)),
                             }
-                            Err(e) => msg.push_str(&format!("\n下载域名获取失败: {}", e)),
+                        } else if let Some(first) = items.first() {
+                            // S3：直接探测第一个对象可得性
+                            match backend.probe_status(&first.key) {
+                                Ok(code) => {
+                                    msg.push_str(&format!(
+                                        "\n对象探测: {}",
+                                        if (200..300).contains(&code) { "OK".to_string() } else { format!("HTTP {}", code) }
+                                    ));
+                                }
+                                Err(e) => msg.push_str(&format!("\n对象探测: 失败 {}", e)),
+                            }
                         }
                         let _ = ev.send(WorkerEvent::TestDone {
                             title: "测试连接".into(),
@@ -684,9 +846,9 @@ fn worker_loop(rx: Receiver<Task>, ev: Sender<WorkerEvent>) {
             }
             Task::TestUpload { cfg } => {
                 let prefix = sync::norm_prefix(&cfg.prefix);
-                let key = format!("{}_selftest_qiniu_sync.tmp", prefix);
+                let key = format!("{}_selftest_s3filesync.tmp", prefix);
                 let tmp = std::env::temp_dir().join(format!("qsync_{}.txt", std::process::id()));
-                if let Err(e) = std::fs::write(&tmp, "qiniu file sync selftest") {
+                if let Err(e) = std::fs::write(&tmp, "s3filesync selftest") {
                     let _ = ev.send(WorkerEvent::TestDone {
                         title: "上传自检".into(),
                         ok: false,
@@ -694,13 +856,13 @@ fn worker_loop(rx: Receiver<Task>, ev: Sender<WorkerEvent>) {
                     });
                     continue;
                 }
-                let mut c = Kodo::new(&cfg.ak, &cfg.sk, &cfg.bucket, &cfg.region, &cfg.download_domain, &cfg.proxy_mode);
-                match c.upload_file(&tmp, &key) {
+                let mut backend = Backend::new(&cfg);
+                match backend.upload_file(&tmp, &key) {
                     Ok(rh) => {
-                        if let Some(reg) = c.detected_region.clone() {
+                        if let Some(reg) = backend.detected_region() {
                             let _ = ev.send(WorkerEvent::RegionDetected(reg));
                         }
-                        let cleaned = c.delete(&key).is_ok();
+                        let cleaned = backend.delete(&key).is_ok();
                         if !cleaned {
                             logger::warn("清理上传自检对象失败，请到控制台手动删除");
                         }
@@ -708,12 +870,17 @@ fn worker_loop(rx: Receiver<Task>, ev: Sender<WorkerEvent>) {
                             title: "上传自检".into(),
                             ok: true,
                             msg: format!(
-                                "上传成功。\n测试对象: {}\n云端 hash: {}\n上传端点: {}\n实际区域: {}（设置值 {}）\n测试对象已清理: {}",
+                                "上传成功。\n测试对象: {}\n云端内容标识: {}\n请求端点: {}{}\n测试对象已清理: {}",
                                 key,
                                 rh,
-                                c.up_host_display(),
-                                c.detected_region.clone().unwrap_or_else(|| cfg.region.clone()),
-                                cfg.region,
+                                backend.endpoint_display(),
+                                if cfg.is_s3() { String::new() } else {
+                                    format!(
+                                        "\n实际区域: {}（设置值 {}）",
+                                        backend.detected_region().unwrap_or_else(|| cfg.region.clone()),
+                                        cfg.region
+                                    )
+                                },
                                 if cleaned { "是" } else { "否（请到控制台手动删除）" }
                             ),
                         });
@@ -729,8 +896,8 @@ fn worker_loop(rx: Receiver<Task>, ev: Sender<WorkerEvent>) {
                 let _ = std::fs::remove_file(&tmp);
             }
             Task::List { cfg, prefix, marker } => {
-                let mut c = Kodo::new(&cfg.ak, &cfg.sk, &cfg.bucket, &cfg.region, &cfg.download_domain, &cfg.proxy_mode);
-                match c.list_page(&prefix, marker.as_deref(), 100) {
+                let mut backend = Backend::new(&cfg);
+                match backend.list_page(&prefix, marker.as_deref(), 100) {
                     Ok((items, next)) => {
                         let _ = ev.send(WorkerEvent::ListDone {
                             items,
@@ -743,11 +910,22 @@ fn worker_loop(rx: Receiver<Task>, ev: Sender<WorkerEvent>) {
                     }
                 }
             }
+            Task::ListDirs { cfg, prefix } => {
+                let mut backend = Backend::new(&cfg);
+                match backend.list_dirs(&prefix) {
+                    Ok(dirs) => {
+                        let _ = ev.send(WorkerEvent::DirsDone { dirs, req_prefix: prefix });
+                    }
+                    Err(e) => {
+                        let _ = ev.send(WorkerEvent::DirsFailed { msg: e });
+                    }
+                }
+            }
             Task::DeleteKeys { cfg, keys } => {
-                let mut c = Kodo::new(&cfg.ak, &cfg.sk, &cfg.bucket, &cfg.region, &cfg.download_domain, &cfg.proxy_mode);
+                let mut backend = Backend::new(&cfg);
                 let mut errs = Vec::new();
                 for k in &keys {
-                    if let Err(e) = c.delete(k) {
+                    if let Err(e) = backend.delete(k) {
                         errs.push(format!("{}: {}", k, e));
                     }
                 }
@@ -762,13 +940,13 @@ fn worker_loop(rx: Receiver<Task>, ev: Sender<WorkerEvent>) {
                 });
             }
             Task::DownloadKeys { cfg, entries, root } => {
-                let mut c = Kodo::new(&cfg.ak, &cfg.sk, &cfg.bucket, &cfg.region, &cfg.download_domain, &cfg.proxy_mode);
+                let mut backend = Backend::new(&cfg);
                 let root = PathBuf::from(root);
                 let mut saved = Vec::new();
                 let mut errs = Vec::new();
                 for it in &entries {
                     let dest = sync::local_target(&root, &it.key);
-                    match c.download(&it.key, &dest) {
+                    match backend.download(&it.key, &dest) {
                         Ok(p) => saved.push(p.to_string_lossy().to_string()),
                         Err(e) => errs.push(format!("{}: {}", it.key, e)),
                     }
@@ -791,12 +969,12 @@ fn worker_loop(rx: Receiver<Task>, ev: Sender<WorkerEvent>) {
                 });
             }
             Task::UploadFiles { cfg, specs, prefix } => {
-                let mut c = Kodo::new(&cfg.ak, &cfg.sk, &cfg.bucket, &cfg.region, &cfg.download_domain, &cfg.proxy_mode);
+                let mut backend = Backend::new(&cfg);
                 let mut state = state::load();
                 let mut keys = Vec::new();
                 let mut errs = Vec::new();
                 for (path, key) in &specs {
-                    match c.upload_file(path, key) {
+                    match backend.upload_file(path, key) {
                         Ok(rh) => {
                             let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
                             state::record(&mut state, key, &rh, size as i64, &path.to_string_lossy());
