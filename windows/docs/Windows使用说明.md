@@ -2,7 +2,7 @@
 
 ## 一、安装（一次性）
 
-项目目录：`E:\agentwork\qiniu-clockin-sync`，Python：`D:\02soft\python312`（已装好依赖）。
+项目目录：`E:\agentwork\S3FileSync\windows`，Python：`D:\02soft\python312`（已装好依赖）。
 
 如需在新机器安装：
 ```
@@ -48,18 +48,18 @@ D:\02soft\python312\python.exe -m pip install -r requirements.txt
     「全部文件」回根目录、「上级」回上一层，双击以 `/` 结尾的目录占位对象可进入目录；
   - 「上传文件…」「上传文件夹…」上传到当前云端目录（保留子目录结构，同名覆盖）；
   - 多选**下载选中**或**删除选中**（删除有确认，不可恢复）、双击下载、点表头排序、右键复制 Key；
-  - 「打开云端」在浏览器打开七牛控制台当前空间。
+  - 「打开云端」在浏览器打开当前访问域名下的云端目录（S3 兼容，不限定七牛云）。
 - **托盘菜单**：打开主窗口 / 立即同步 / 仅上传一轮 / 仅下载一轮 / 暂停自动同步 /
   打开本地目录 / 打开云端目录 / 退出。
 - **日志**：设置、同步、上传、下载、删除等全部记录；文件日志在
-  `%APPDATA%\qiniu-clockin-sync\app.log`（1MB 自动轮转 ×2）。
+  `%APPDATA%\S3FileSync\app.log`（1MB 自动轮转 ×2）。
 
 ## 五、重要：下载域名与七牛测试域名
 
 - 下载走桶的**绑定域名** + 私有签名 URL；上传走区域上传端点（`up-<region>.qiniup.com`），与下载域名无关。
 - **七牛的免费测试域名只有 30 天有效期**，回收后下载会失败。
   长期使用请给桶绑定自己的域名，并在设置页更新"下载域名"。
-- 配置目录沿用旧名 `qiniu-clockin-sync`，保证升级后 AK/SK 与已同步状态不丢失。
+- 配置目录为 `%APPDATA%\S3FileSync`；首次启动会自动把旧目录 `qiniu-clockin-sync` 整体迁移过来，沿用已有 AK/SK 与同步状态。
 
 ## 六、故障排查
 
@@ -71,13 +71,13 @@ D:\02soft\python312\python.exe -m pip install -r requirements.txt
 | 上传被跳过且日志提示"内容不同" | 默认不覆盖云端，需要覆盖请在设置页勾选「上传时覆盖云端同名文件」 |
 | 下载报 403 | 域名已失效（如测试域名过期）→ 换域名 |
 | 中文文件夹乱码 | 本程序直接按 Unicode 文件名落盘，资源管理器正常显示 |
-| 想强制全部重新下载 | 删除 `%APPDATA%\qiniu-clockin-sync\sync_state.json` 后"立即同步"（本地同名同大小文件会自动识别跳过重下） |
-| 程序没起来 | 看 `%APPDATA%\qiniu-clockin-sync\app.log`；用 `run.pyw` 方式启动看报错 |
+| 想强制全部重新下载 | 删除 `%APPDATA%\S3FileSync\sync_state.json` 后"立即同步"（本地同名同大小文件会自动识别跳过重下） |
+| 程序没起来 | 看 `%APPDATA%\S3FileSync\app.log`；用 `run.pyw` 方式启动看报错 |
 
 ## 七、CLI 调试（不用 GUI）
 
 ```
-cd E:\agentwork\qiniu-clockin-sync
+cd E:\agentwork\S3FileSync\windows
 D:\02soft\python312\python.exe -m app.sync --once                   # 按配置方向同步一轮
 D:\02soft\python312\python.exe -m app.sync --once --mode upload    # 仅上传一轮
 D:\02soft\python312\python.exe -m app.sync --once --mode download  # 仅下载一轮

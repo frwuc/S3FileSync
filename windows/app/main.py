@@ -41,6 +41,7 @@ class QueueLogHandler(logging.Handler):
 
 class App:
     def __init__(self):
+        config.migrate_legacy_dir()  # 首次启动把旧配置目录搬到 S3FileSync
         self.cfg = config.load()
         self.events = queue.Queue()
         self.executor = ThreadPoolExecutor(max_workers=1)

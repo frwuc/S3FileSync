@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
-"""配置读写（%APPDATA%\\qiniu-clockin-sync\\config.json）。
+"""配置读写（%APPDATA%\\S3FileSync\\config.json）。
 
-注意：配置目录名沿用旧版，改目录会导致已有 AK/SK 与同步状态丢失；
 显示的软件名称由 APP_NAME 统一控制。
+首次启动会把旧目录 qiniu-clockin-sync 整体迁移到 S3FileSync，
+保留已有的 AK/SK 与同步状态（见 migrate_legacy_dir）。
 """
 import json
+import logging
 import os
+import shutil
+
+log = logging.getLogger('s3filesync.config')
 
 APP_NAME = 'S3FileSync'
 APP_VERSION = '1.0.1'
@@ -15,9 +20,35 @@ BACKEND_NOTE = '当前后端：七牛云 Kodo（S3 兼容）；其他 S3 兼容�
 
 APP_DIR = os.path.join(
     os.environ.get('APPDATA') or os.path.expanduser('~'),
-    'qiniu-clockin-sync',
+    'S3FileSync',
 )
 CONFIG_PATH = os.path.join(APP_DIR, 'config.json')
+
+# 旧版本遗留的配置目录（项目曾用名 qiniu-clockin-sync）；首次启动整体搬过来。
+LEGACY_APP_DIR = os.path.join(
+    os.environ.get('APPDATA') or os.path.expanduser('~'),
+    'qiniu-clockin-sync',
+)
+
+
+def migrate_legacy_dir():
+    """把旧配置目录 qiniu-clockin-sync 整体迁移到 S3FileSync（仅首次）。
+
+    迁移失败（如跨盘/权限）时退化为复制，不丢数据；若新目录已存在则跳过，
+    避免覆盖已有配置。
+    """
+    old, new = LEGACY_APP_DIR, APP_DIR
+    if old == new or not os.path.isdir(old) or os.path.exists(new):
+        return
+    try:
+        shutil.move(old, new)
+        log.info('已将旧配置目录迁移到 %s', new)
+    except Exception as e:  # 移动失败则复制兜底
+        try:
+            shutil.copytree(old, new)
+            log.warning('移动旧配置目录失败（%s），已复制兜底', e)
+        except Exception as e2:
+            log.warning('迁移旧配置目录失败: %s', e2)
 
 # 同步方向：download=云端→本地，upload=本地→云端，both=双向
 SYNC_MODES = {

@@ -7,7 +7,7 @@
 上传时按七牛 etag 比对云端同名对象，内容一致即跳过，避免重复传输。
 
 CLI 调试:
-    cd E:/agentwork/qiniu-clockin-sync
+    cd E:/agentwork/S3FileSync/windows
     python -m app.sync --once                    # 按配置方向同步一轮
     python -m app.sync --once --mode upload     # 仅上传一轮
     python -m app.sync --watch                  # 按配置间隔循环

@@ -49,8 +49,8 @@ D:\02soft\python312\python.exe -m app.sync --once --mode upload   # 仅上传一
 D:\02soft\python312\python.exe -m app.sync --once --mode both     # 双向一轮
 ```
 
-配置与状态仍在 `%APPDATA%\qiniu-clockin-sync\`（`config.json` / `sync_state.json` / `app.log`）。
-目录名沿用旧版，保证升级后 AK/SK 与已同步状态不丢失；软件显示名称已改为「S3FileSync」。
+配置与状态在 `%APPDATA%\S3FileSync\`（`config.json` / `sync_state.json` / `app.log`）。
+首次启动会自动把旧目录 `qiniu-clockin-sync` 整体迁移过来，保证升级后 AK/SK 与已同步状态不丢失。
 
 ## 目录结构
 

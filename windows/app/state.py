@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""同步状态（%APPDATA%\\qiniu-clockin-sync\\sync_state.json）。
+"""同步状态（%APPDATA%\\S3FileSync\\sync_state.json）。
 
 结构: {key: {"etag":..., "fsize":..., "local_path":..., "synced_at":...}}
 """
