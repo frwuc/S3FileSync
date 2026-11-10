@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>S3FileSync — 文件同步</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="brand">
+        <div class="brand-logo">S3</div>
+        <div class="brand-text">
+          <div class="brand-name">S3FileSync</div>
+          <div class="brand-sub" id="brand-sub">对象存储同步</div>
+        </div>
+      </div>
+      <nav id="nav"></nav>
+      <div class="sidebar-footer">
+        <div class="dot-line" id="cfg-state"><span class="dot dot-red"></span><span id="cfg-state-text">待配置</span></div>
+        <div class="version" id="version">v—</div>
+      </div>
+    </aside>
+    <div id="main">
+      <div id="content"></div>
+      <footer id="statusbar">
+        <div class="sb-left">
+          <span class="chip" id="chip-run"><span class="dot" id="chip-run-dot"></span><span id="chip-run-text">—</span></span>
+          <span class="chip chip-muted" id="chip-mode">方向：—</span>
+          <span class="sb-status" id="sb-status">准备就绪</span>
+        </div>
+        <div class="sb-center" id="sb-next" title="下次自动同步时间">
+          <svg viewBox="0 0 24 24" class="ic ic-14"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          <span id="sb-next-text">下次同步：—</span>
+        </div>
+        <div class="sb-right">
+          <span class="spinner" id="sb-spinner" hidden></span>
+          <div class="dropdown" id="sync-dropdown">
+            <button class="btn btn-ghost" id="btn-once">单跑 ▾</button>
+            <div class="dropdown-menu" id="once-menu" hidden>
+              <button data-mode="">按设置的方向（一轮）</button>
+              <button data-mode="upload">仅上传一轮</button>
+              <button data-mode="download">仅下载一轮</button>
+              <button data-mode="both">双向一轮</button>
+            </div>
+          </div>
+          <button class="btn btn-ghost" id="btn-pause">暂停自动</button>
+          <button class="btn btn-primary" id="btn-sync">
+            <svg viewBox="0 0 24 24" class="ic"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+            立即同步
+          </button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toast-root"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

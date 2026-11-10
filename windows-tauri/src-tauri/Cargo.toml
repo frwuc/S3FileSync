@@ -1,0 +1,36 @@
+[package]
+name = "s3filesync"
+version = "1.2.0"
+edition = "2021"
+description = "S3 兼容对象存储同步工具（Windows 桌面端，Tauri Web GUI）"
+license = "MIT"
+
+[[bin]]
+name = "S3FileSync"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+# native-tls 后端必须显式经 AgentBuilder::tls_connector 注入（2.12 起不再自动接线）
+ureq = { version = "2.12", default-features = false, features = ["native-tls"] }
+native-tls = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha1 = "0.10"
+sha2 = "0.10"
+md-5 = "0.10"
+hmac = "0.12"
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+winreg = "0.55"
+webbrowser = "1"
+
+[profile.release]
+opt-level = 2
+lto = "thin"
+strip = true
