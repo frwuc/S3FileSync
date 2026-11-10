@@ -51,6 +51,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // 每次回到前台刷新状态栏常驻通知（「正常监听 · 正常后台运行」）
+        StatusNotifier.monitoring(this);
+    }
+
+    @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putInt(STATE_TAB, currentTabId);

@@ -78,6 +78,9 @@ public class UploadService extends Service {
     private boolean downloadedRecordsReady;
     private UploadLogger logger;
 
+    /** 本轮同步的累计结果（成功/失败/跳过），结束时用于常驻状态通知的摘要。 */
+    private int totalOk, totalFail, totalSkip;
+
     /**
      * 当前是否有一次同步正在执行。
      *
@@ -99,7 +102,7 @@ public class UploadService extends Service {
         uploadedRecordsReady = loadRecordSet(uploadedRecordFile, uploadedSet);
         downloadedRecordsReady = loadRecordSet(downloadedRecordFile, downloadedSet);
         logger = new UploadLogger(this);
-        startForeground(NOTIFICATION_ID, createNotification("正在执行同步任务..."));
+        startForeground(NOTIFICATION_ID, createNotification("正在同步…"));
     }
 
     @Override
@@ -120,6 +123,9 @@ public class UploadService extends Service {
                 performSync();
             } finally {
                 RUNNING.set(false);
+                // 先发「同步完成」常驻通知（独立 ID，不受 stopForeground 影响），
+                // 再撤掉前台通知 —— 这样状态栏的图标不会出现空档
+                StatusNotifier.done(UploadService.this, resultSummary());
                 stopForeground(true);
                 stopSelf();
             }
@@ -136,7 +142,7 @@ public class UploadService extends Service {
         if (!uploadedRecordsReady || !downloadedRecordsReady) {
             // 已有记录读取失败时若按空集合继续，会把全部历史文件重新传一遍。
             logger.logLine("历史同步记录读取失败，为避免重复传输，本次任务已中止");
-            logger.logExecution("同步", 0, 1, 0);
+            recordResult("同步", 0, 1, 0);
             return;
         }
         if (mode.doUpload()) performUpload();
@@ -188,6 +194,7 @@ public class UploadService extends Service {
                 String key = ScanRules.buildRemoteKey(prefix, ScanRules.relativeDirOf(root, file), fileName);
 
                 Log.d(TAG, "准备上传: " + fileName);
+                notifyProgress("正在同步 · 上传 " + fileName);
 
                 final CountDownLatch completed = new CountDownLatch(1);
                 uploader.upload(absPath, key, new QiniuUploader.Callback() {
@@ -234,14 +241,14 @@ public class UploadService extends Service {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     logger.logLine("上传等待被中断，本次上传已中止");
-                    logger.logExecution("上传", success[0], fail[0], skip);
+                    recordResult("上传", success[0], fail[0], skip);
                     return;
                 }
             }
         }
 
         Log.d(TAG, "上传完成: 成功=" + success[0] + ", 失败=" + fail[0] + ", 跳过=" + skip);
-        logger.logExecution("上传", success[0], fail[0], skip);
+        recordResult("上传", success[0], fail[0], skip);
     }
 
     // ---------------------------------------------------------------- 下载
@@ -262,12 +269,12 @@ public class UploadService extends Service {
 
         if (isEmpty(ak) || isEmpty(sk) || isEmpty(bucket)) {
             logger.logLine("跳过下载：请先在「设置」填写七牛云 AK / SK / Bucket");
-            logger.logExecution("下载", 0, 1, 0);
+            recordResult("下载", 0, 1, 0);
             return;
         }
         if (localDir.isEmpty()) {
             logger.logLine("跳过下载：请先在「设置」填写本地文件目录（下载目标目录）");
-            logger.logExecution("下载", 0, 1, 0);
+            recordResult("下载", 0, 1, 0);
             return;
         }
 
@@ -278,7 +285,7 @@ public class UploadService extends Service {
         } catch (Exception e) {
             String msg = e.getMessage() == null ? e.toString() : e.getMessage();
             logger.logLine("列举云端文件失败，下载已中止：" + msg);
-            logger.logExecution("下载", 0, 1, 0);
+            recordResult("下载", 0, 1, 0);
             return;
         }
 
@@ -303,6 +310,7 @@ public class UploadService extends Service {
             }
 
             try {
+                notifyProgress("正在同步 · 下载 " + displayName);
                 QiniuBucketApi.downloadToFile(ak, sk, domain, key, target);
                 markDownloaded(key, target);
                 success[0]++;
@@ -320,13 +328,13 @@ public class UploadService extends Service {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 logger.logLine("下载等待被中断，本次下载已中止");
-                logger.logExecution("下载", success[0], fail[0], skip);
+                recordResult("下载", success[0], fail[0], skip);
                 return;
             }
         }
 
         Log.d(TAG, "下载完成: 成功=" + success[0] + ", 失败=" + fail[0] + ", 跳过=" + skip);
-        logger.logExecution("下载", success[0], fail[0], skip);
+        recordResult("下载", success[0], fail[0], skip);
     }
 
     /**
@@ -376,6 +384,26 @@ public class UploadService extends Service {
     }
 
     // ---------------------------------------------------------------- 通知
+
+    /** 记执行汇总（写日志 + 累计到本轮结果，供结束时常驻通知展示）。 */
+    private void recordResult(String phase, int ok, int fail, int skip) {
+        logger.logExecution(phase, ok, fail, skip);
+        totalOk += ok;
+        totalFail += fail;
+        totalSkip += skip;
+    }
+
+    /** 本轮累计结果摘要；三个计数都为 0 时返回空串（摘要里就只写「同步完成」）。 */
+    private String resultSummary() {
+        if (totalOk == 0 && totalFail == 0 && totalSkip == 0) return "";
+        return "成功 " + totalOk + " · 失败 " + totalFail + " · 跳过 " + totalSkip;
+    }
+
+    /** 更新前台通知文案：状态栏实时可见「正在同步 · 上传/下载 xxx」。 */
+    private void notifyProgress(String text) {
+        NotificationManager nm = getSystemService(NotificationManager.class);
+        if (nm != null) nm.notify(NOTIFICATION_ID, createNotification(text));
+    }
 
     private Notification createNotification(String content) {
         createChannel();

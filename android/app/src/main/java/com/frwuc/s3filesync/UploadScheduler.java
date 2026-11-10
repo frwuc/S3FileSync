@@ -15,7 +15,11 @@ public class UploadScheduler {
 
     public static void schedule(Context context, List<String> times) {
         cancelAll(context);
-        if (times == null || times.isEmpty()) return;
+        if (times == null || times.isEmpty()) {
+            // 定时被清空：状态通知同步刷新（不再显示「下次同步 xx:xx」）
+            StatusNotifier.monitoring(context);
+            return;
+        }
 
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
@@ -39,6 +43,9 @@ public class UploadScheduler {
 
             android.util.Log.d("UploadScheduler", "已设置定时: " + time);
         }
+
+        // 排完闹钟顺手刷新状态栏的「正常监听」常驻通知（含下次触发时间）
+        StatusNotifier.monitoring(context);
     }
 
     public static void cancelAll(Context context) {
@@ -89,12 +96,18 @@ public class UploadScheduler {
 
     /** 正式闹钟排好后，下一次触发还剩多少毫秒；没有任何有效时间点返回 -1。 */
     public static long nextTriggerDelayMs(List<String> times) {
+        long at = nextTriggerAt(times);
+        return at < 0 ? -1 : at - System.currentTimeMillis();
+    }
+
+    /** 所有已配置时间点中最近一次触发的绝对时间（毫秒）；没有任何有效时间点返回 -1。 */
+    public static long nextTriggerAt(List<String> times) {
         long min = -1;
         if (times == null) return -1;
         for (String t : times) {
             if (!isValidTime(t)) continue;
-            long d = getNextTriggerTime(t) - System.currentTimeMillis();
-            if (min < 0 || d < min) min = d;
+            long at = getNextTriggerTime(t);
+            if (min < 0 || at < min) min = at;
         }
         return min;
     }
