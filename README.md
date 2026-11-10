@@ -4,15 +4,17 @@
 **仅上传 / 仅下载 / 双向**三种方向。当前后端为**七牛云 Kodo（S3 兼容）**，其他 S3 兼容
 服务商尚未验证。
 
-本仓库包含两个客户端，共用同一套同步逻辑与密钥配置：
+本仓库包含三个客户端，共用同一套数据目录（`%APPDATA%\S3FileSync\`）与同步语义：
 
-| 客户端 | 目录 | 平台 | 产物 |
-| --- | --- | --- | --- |
-| 桌面端 | [`windows/`](windows/) | Windows（托盘常驻） | `S3FileSync.exe` |
-| 安卓端 | [`android/`](android/) | Android | `S3FileSync-<version>.apk` |
+| 客户端 | 目录 | 平台 | 技术栈 | 产物 |
+| --- | --- | --- | --- | --- |
+| 桌面端（Python） | [`windows/`](windows/) | Windows（托盘常驻） | Python + Tkinter | `S3FileSync.exe`（PyInstaller） |
+| 桌面端（Rust） | [`windows-rust/`](windows-rust/) | Windows（托盘常驻） | Rust + egui 原生 GUI | `S3FileSync.exe`（单文件约 6MB） |
+| 安卓端 | [`android/`](android/) | Android | Kotlin + Java | `S3FileSync-<version>.apk` |
 
-两个客户端都对接同一个七牛云 Bucket，文件名/目录结构在两端保持一致（上传不加时间戳、
-下载不加前缀），可互相补齐新增文件。
+三个客户端都对接同一个七牛云 Bucket，文件名/目录结构在多端保持一致（上传不加时间戳、
+下载不加前缀），可互相补齐新增文件。两个桌面端共用同一份
+`config.json / sync_state.json / app.log`，可互换使用、无缝切换。
 
 ## 功能特性
 
@@ -34,6 +36,10 @@ S3FileSync/
 │   ├── run.pyw     # 无控制台入口
 │   ├── S3FileSync.spec   # PyInstaller 打包配置
 │   └── README.md   # 桌面端使用说明
+├── windows-rust/   # Windows 桌面端（Rust + egui 原生 GUI，功能与 Python 端对等）
+│   ├── src/        # 应用源码（含单测）
+│   ├── Cargo.toml
+│   └── README.md   # 构建与差异说明
 ├── android/        # 安卓端（Gradle / Kotlin + Java）
 │   ├── app/        # 应用源码
 │   ├── build.gradle
@@ -45,7 +51,9 @@ S3FileSync/
 
 前往 **Releases** 页面获取对应平台的安装包：
 
-- **Windows**：下载 `S3FileSync-<version>.exe`，双击运行即常驻系统托盘
+- **Windows**：任选其一——
+  - `S3FileSync-Setup-<version>.exe` / `S3FileSync-<version>.exe`（Python 端，PyInstaller 打包）
+  - `S3FileSync-rust-<version>.zip`（Rust 端，解压即用，单 exe 无运行时依赖）
 - **Android**：下载 `S3FileSync-<version>.apk`，允许「未知来源」后安装
 
 ## 配置
@@ -59,7 +67,9 @@ S3FileSync/
 
 ## 构建
 
-- 桌面端：`cd windows && pyinstaller S3FileSync.spec`（需 Python 3.12 + 依赖见 `windows/requirements.txt`）
+- 桌面端（Python）：`cd windows && pyinstaller S3FileSync.spec`（需 Python 3.12 + 依赖见 `windows/requirements.txt`）
+- 桌面端（Rust）：`cd windows-rust && cargo build --release`（需 Rust stable-msvc 工具链，
+  产物 `target/release/S3FileSync.exe`，详见 `windows-rust/README.md`）
 - 安卓端：`cd android && gradle assembleRelease`（需 Android SDK，见 `android/local.properties`；
   `gradle` 可用本地缓存版本直接调用，无需 wrapper）
 
