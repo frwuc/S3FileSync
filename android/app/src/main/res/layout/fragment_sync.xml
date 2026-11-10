@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F6FA">
+
+    <!-- 渐变头部 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_gradient_header"
+        android:padding="20dp"
+        android:paddingTop="22dp"
+        android:paddingBottom="28dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⚡ 同步任务"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="按设定方向定时同步本地与云端的新增文件"
+            android:textSize="13sp"
+            android:textColor="#E3F2FD"
+            android:layout_marginTop="4dp"/>
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- 配置状态卡片 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card_round"
+                android:padding="18dp"
+                android:elevation="3dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="当前配置"
+                    android:textStyle="bold"
+                    android:textSize="15sp"
+                    android:textColor="#1976D2"
+                    android:layout_marginBottom="12dp"/>
+
+                <TextView
+                    android:id="@+id/tv_sync_bucket"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Bucket：未设置"
+                    android:textSize="13sp"
+                    android:textColor="#555555"
+                    android:drawablePadding="8dp"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/tv_sync_dirs"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="本地目录：未设置"
+                    android:textSize="13sp"
+                    android:textColor="#555555"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/tv_sync_cloud"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="云端目录：未设置"
+                    android:textSize="13sp"
+                    android:textColor="#555555"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/tv_sync_times"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="定时时间：未设置"
+                    android:textSize="13sp"
+                    android:textColor="#555555"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/tv_sync_mode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="同步方向：仅上传"
+                    android:textSize="13sp"
+                    android:textColor="#555555"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/tv_sync_sort"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="浏览排序：时间 ↓"
+                    android:textSize="13sp"
+                    android:textColor="#555555"/>
+            </LinearLayout>
+
+            <!-- 立即同步渐变大按钮 -->
+            <Button
+                android:id="@+id/btn_sync_now"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="立即同步"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/white"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/bg_btn_gradient"/>
+
+            <TextView
+                android:id="@+id/tv_sync_action_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="扫描本地文件目录，把新增文件上传到云端"
+                android:textSize="12sp"
+                android:textColor="#999999"
+                android:gravity="center"
+                android:layout_marginTop="8dp"/>
+
+            <!-- 浏览两端内容（支持名称 / 时间排序） -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="14dp">
+
+                <Button
+                    android:id="@+id/btn_browse_local"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="📁 本地文件夹"
+                    android:backgroundTint="#E8EAF6"
+                    android:textColor="#3F51B5"/>
+
+                <Button
+                    android:id="@+id/btn_browse_cloud"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:text="☁️ 云端目录"
+                    android:backgroundTint="#E8EAF6"
+                    android:textColor="#3F51B5"/>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="可浏览同步文件夹内容，默认按时间新到旧；排序方式可在「设置」中调整"
+                android:textSize="12sp"
+                android:textColor="#999999"
+                android:gravity="center"
+                android:layout_marginTop="6dp"/>
+
+            <!-- 运行状态 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card_round"
+                android:padding="14dp"
+                android:elevation="2dp"
+                android:layout_marginTop="16dp">
+
+                <TextView
+                    android:id="@+id/tv_sync_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="状态：就绪"
+                    android:textSize="13sp"
+                    android:textColor="#555555"/>
+
+                <TextView
+                    android:id="@+id/btn_schedule_helper"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
+                    android:text="⏰ 定时没触发？打开排查助手"
+                    android:textSize="13sp"
+                    android:textColor="#E65100"
+                    android:background="?android:attr/selectableItemBackground"/>
+            </LinearLayout>
+
+            <!-- 未配置提示 -->
+            <TextView
+                android:id="@+id/tv_sync_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="⚠️ 尚未完成配置，请先到「设置」填写七牛云账号与目录"
+                android:layout_marginTop="12dp"
+                android:padding="14dp"
+                android:background="#FFF3E0"
+                android:textSize="13sp"
+                android:textColor="#E65100"
+                android:visibility="gone"/>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

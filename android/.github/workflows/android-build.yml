@@ -1,0 +1,103 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 代码
+        uses: actions/checkout@v7
+
+      # AGP 8.1.x 需要 JDK 17
+      - name: 设置 JDK 17
+        uses: actions/setup-java@v6
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 安装 Gradle 本体（官方 action，自动读取 wrapper properties 里的版本并缓存）
+      # 用法上直接调 `gradle`，从而完全绕开手工维护的 gradle-wrapper.jar / gradlew 脚本
+      # validate-wrappers=false：本项目不再用 wrapper jar 构建，关闭其哈希白名单校验
+      - name: 安装 Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.5'
+          validate-wrappers: false
+
+      # GitHub ubuntu runner 已预装 Android SDK（ANDROID_HOME/ANDROID_SDK_ROOT 已设好）。
+      # 这里只做两件事：接受许可 + 确保所需组件到位。
+      - name: 准备 Android SDK 组件
+        run: |
+          set -e
+          # ubuntu-latest runner 预装了 SDK；ANDROID_HOME 兜底
+          export ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          # 定位 sdkmanager（新旧镜像布局都可能）
+          SDKM="$(command -v sdkmanager || true)"
+          if [ -z "$SDKM" ]; then
+            for c in "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$ANDROID_HOME/tools/bin/sdkmanager"; do
+              if [ -x "$c" ]; then SDKM="$c"; break; fi
+            done
+          fi
+          if [ -z "$SDKM" ]; then
+            echo "未找到 sdkmanager，尝试安装 cmdline-tools"
+            CMDTOOLS_DIR="$ANDROID_HOME/cmdline-tools"
+            mkdir -p "$CMDTOOLS_DIR"
+            curl -sSL -o /tmp/cmdline-tools.zip \
+              https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+            unzip -q -o /tmp/cmdline-tools.zip -d "$CMDTOOLS_DIR"
+            if [ -d "$CMDTOOLS_DIR/cmdline-tools" ]; then
+              mv "$CMDTOOLS_DIR/cmdline-tools" "$CMDTOOLS_DIR/latest"
+            fi
+            export PATH="$CMDTOOLS_DIR/latest/bin:$PATH"
+            SDKM=sdkmanager
+          fi
+          yes | "$SDKM" --licenses > /dev/null 2>&1 || true
+          "$SDKM" "platforms;android-34" "build-tools;34.0.0"
+          echo "SDK 组件安装完成"
+
+      # 直接用 gradle 命令构建，不经过 gradlew（避免 wrapper jar 缺类/脚本版本问题）
+      - name: 构建 Release APK（R8 + 资源收缩，已签名）
+        run: gradle assembleRelease --stacktrace --no-daemon
+
+      # 产物带版本号，与 Gitee 发行版的命名保持一致（如 S3FileSync-1.6.0.apk）
+      - name: 整理产物
+        run: |
+          set -e
+          VERSION="$(sed -nE 's/.*versionName[[:space:]]+"?([^"]+)"?.*/\1/p' app/build.gradle | head -1)"
+          echo "解析到版本号：$VERSION"
+          mkdir -p dist
+          OUT="dist/S3FileSync-${VERSION}.apk"
+          cp app/build/outputs/apk/release/S3FileSync-*.apk "$OUT"
+          echo "APK_PATH=$OUT" >> "$GITHUB_ENV"
+          ls -lh dist/
+
+      - name: 上传 APK 构建产物
+        uses: actions/upload-artifact@v7
+        with:
+          name: S3FileSync
+          path: dist/*.apk
+          retention-days: 7
+
+      # 推送 v* 标签时，自动创建 GitHub Release 并附上 APK
+      - name: 发布 GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.APK_PATH }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

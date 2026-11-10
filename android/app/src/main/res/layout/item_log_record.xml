@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 日志记录条目：文件名 + 结果徽标，下方是时间/云端 key/访问地址 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_card_round"
+    android:elevation="2dp"
+    android:padding="14dp"
+    android:layout_marginBottom="10dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tv_log_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#222222"
+            android:singleLine="true"
+            android:ellipsize="middle"/>
+
+        <TextView
+            android:id="@+id/tv_log_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:textSize="11sp"
+            android:textColor="@android:color/white"
+            android:background="@drawable/bg_badge_ok"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_log_meta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textSize="12sp"
+        android:textColor="#8A8A8A"
+        android:lineSpacingExtra="2dp"/>
+
+    <TextView
+        android:id="@+id/tv_log_url"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textSize="12sp"
+        android:textColor="#1976D2"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:visibility="gone"/>
+</LinearLayout>

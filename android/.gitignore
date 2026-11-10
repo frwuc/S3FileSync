@@ -1,0 +1,34 @@
+# Gradle
+.gradle/
+build/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Log/OS Files
+*.log
+
+# Android Studio / IDEA
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Keystore files
+*.jks
+*.keystore
+# 例外：固定调试密钥随仓库提交，保证本地与 CI 产出的 APK 签名一致（见 app/build.gradle）
+!app/keystore/debug.keystore
+
+# Generated files
+bin/
+gen/
+out/
+
+# Build outputs
+app/build/
+
+# 本机构建用的镜像 init script（不入库）
+.gradle-mirror.init.gradle
