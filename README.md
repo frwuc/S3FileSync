@@ -1,3 +1,9 @@
+> **归档迁移公告：本仓库已归档，不再维护。**
+>
+> 如需使用，请改用继任项目 **[FFFileSync](https://gitee.com/frwuc/FFFileSync)**：https://gitee.com/frwuc/FFFileSync
+>
+> 本仓库仅作历史留存，不建议继续下载或基于此开发。
+
 # S3FileSync
 
 **S3 兼容对象存储同步工具**——把**任意文件**在「本地目录」与「云端空间」之间同步，支持
